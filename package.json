@@ -11,7 +11,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "BROWSER=chromium prisma studio",
     "seed:products": "tsx src/scripts/seed-products.ts",
-    "delete:products": "tsx src/scripts/delete-products.ts"
+    "delete:products": "tsx src/scripts/delete-products.ts",
+    "seed:fulfillment-types": "tsx src/scripts/seed-fulfillment-types.ts",
+    "delete:fulfillment-type": "tsx src/scripts/delete-fulfillment-type.ts"
   },
   "keywords": [],
   "author": "",

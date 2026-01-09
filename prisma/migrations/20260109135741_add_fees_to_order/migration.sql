@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Order" ADD COLUMN     "deliveryFee" DECIMAL(12,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "orderDiscount" DECIMAL(12,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "serviceFee" DECIMAL(12,2) NOT NULL DEFAULT 0;

@@ -74,7 +74,10 @@ export const getProducts: RouteHandlerMethod = async (request, reply) => {
       "Products retrieved successfully"
     );
   } catch (error: any) {
-    request.log.error(error);
+    console.error("List products error:", error, {
+      query: request.query,
+      user: request.user,
+    });
     return sendError(reply, "Failed to fetch products", 500);
   }
 };

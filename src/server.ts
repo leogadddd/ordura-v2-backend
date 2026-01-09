@@ -5,6 +5,8 @@ import jwt from "@fastify/jwt";
 import cookie from "@fastify/cookie";
 import { authRoutes } from "./routes/auth";
 import { productRoutes } from "./routes/products";
+import { orderRoutes } from "./routes/orders";
+import { optionsRoutes } from "./routes/options";
 // import { posRoutes } from "./routes/pos";
 // import { inventoryRoutes } from "./routes/inventory";
 // import { reportsRoutes } from "./routes/reports";
@@ -37,6 +39,8 @@ server.get("/health", async () => {
 // Register routes
 server.register(authRoutes, { prefix: "/api/auth" });
 server.register(productRoutes, { prefix: "/api/products" });
+server.register(orderRoutes, { prefix: "/api/orders" });
+server.register(optionsRoutes, { prefix: "/api/options" });
 // server.register(posRoutes, { prefix: "/api/pos" });
 // server.register(inventoryRoutes, { prefix: "/api/inventory" });
 // server.register(reportsRoutes, { prefix: "/api/reports" });

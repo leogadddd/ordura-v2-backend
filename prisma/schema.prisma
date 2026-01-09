@@ -17,7 +17,7 @@ datasource db {
 // Authentication & Authorization
 // ============================================
 
-model User {
+model CommonUser {
   id        String   @id @default(cuid())
   email     String   @unique
   username  String   @unique
@@ -33,9 +33,11 @@ model User {
 
   // Relations
   sessions      Session[]
+  orders        Order[]
 
   @@index([email])
   @@index([username])
+  @@map("User")
 }
 
 model Session {
@@ -48,7 +50,7 @@ model Session {
   
   createdAt DateTime @default(now())
   
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user CommonUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([refreshToken])
@@ -80,16 +82,216 @@ model Product {
   status       ProductStatus @default(ACTIVE)
   isDraft      Boolean  @default(false)
   
+  // Fulfillment Configuration
+  requiresFulfillment Boolean @default(false) // whether this product needs assembly/cooking/etc
+  fulfillmentTypeId   String?
+  fulfillmentType     FulfillmentType? @relation(fields: [fulfillmentTypeId], references: [id])
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
   @@index([sku])
   @@index([category])
   @@index([status])
+  @@index([fulfillmentTypeId])
 }
 
 enum ProductStatus {
   ACTIVE
   INACTIVE
   OUT_OF_STOCK
+}
+
+// ============================================
+// Sales & Orders
+// ============================================
+
+// Notes on design:
+// - No hard relations to `Product`; we snapshot product info on each `OrderItem`
+//   so historical orders remain correct even if the product changes later.
+// - Monetary values use Decimal to avoid floating point issues.
+
+enum OrderStatus {
+  DRAFT
+  OPEN
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderType {
+  SALE
+  RETURN
+}
+
+enum TaxMode {
+  INCLUSIVE
+  EXCLUSIVE
+  NONE
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOBILE
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  VOID
+  REFUNDED
+}
+
+enum FulfillmentStatus {
+  PENDING
+  IN_PROGRESS
+  READY_FOR_PICKUP
+  COMPLETED
+  CANCELLED
+}
+
+model FulfillmentType {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  name       String
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  products     Product[]
+  fulfillments Fulfillment[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  orderNumber  String      @unique
+  type         OrderType   @default(SALE)
+  status       OrderStatus @default(OPEN)
+  taxMode      TaxMode     @default(EXCLUSIVE)
+  currency     String      @default("PHP")
+
+  // Customer snapshot (optional)
+  customerName String?
+  customerPhone String?
+  customerEmail String?
+
+  // Totals
+  subtotal       Decimal     @db.Decimal(12, 2)
+  orderDiscount  Decimal     @db.Decimal(12, 2) @default(0)  // discount on subtotal
+  discountTotal  Decimal     @db.Decimal(12, 2) @default(0)  // line item discounts
+  serviceFee     Decimal     @db.Decimal(12, 2) @default(0)
+  deliveryFee    Decimal     @db.Decimal(12, 2) @default(0)
+  taxTotal       Decimal     @db.Decimal(12, 2) @default(0)
+  grandTotal     Decimal     @db.Decimal(12, 2)
+  paidTotal      Decimal     @db.Decimal(12, 2) @default(0)
+  changeDue      Decimal     @db.Decimal(12, 2) @default(0)
+  dueAmount      Decimal     @db.Decimal(12, 2) @default(0)
+
+  notes       String?
+  employeeId  String
+  createdAt   DateTime    @default(now())
+  closedAt    DateTime?
+
+  // Relations
+  employee      CommonUser    @relation(fields: [employeeId], references: [id])
+  items         OrderItem[]
+  payments      Payment[]
+  fulfillments  Fulfillment[]
+
+  // Indexes
+  @@index([status])
+  @@index([employeeId])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  lineNo    Int
+
+  // Product snapshot (no FK)
+  productId String?
+  sku       String?
+  name      String
+  category  String?
+
+  // Pricing
+  unitPrice   Decimal  @db.Decimal(12, 2)
+  unitCost    Decimal? @db.Decimal(12, 2)
+  quantity    Decimal  @db.Decimal(12, 3)
+  discount    Decimal  @db.Decimal(12, 2) @default(0)
+  taxRate     Decimal? @db.Decimal(5, 4)  // e.g. 0.1200 for 12%
+  taxAmount   Decimal  @db.Decimal(12, 2) @default(0)
+  lineTotal   Decimal  @db.Decimal(12, 2)
+
+  notes     String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([orderId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  orderId      String
+  method       PaymentMethod
+  status       PaymentStatus @default(PAID)
+  amount       Decimal       @db.Decimal(12, 2)
+  currency     String        @default("USD")
+  reference    String?
+  externalTxnId String?
+  receivedAt   DateTime      @default(now())
+  metadata     Json?
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([orderId])
+  @@index([method])
+  @@index([status])
+  @@index([receivedAt])
+}
+
+// ============================================
+// Fulfillment (Kitchen, Assembly, Preparation)
+// ============================================
+
+model Fulfillment {
+  id           String               @id @default(cuid())
+  orderId      String
+  fulfillmentTypeId String
+  status       FulfillmentStatus    @default(PENDING)
+  
+  // Assignment & Timing
+  assignedTo   String?              // employeeId - who's responsible
+  priority     Int                  @default(0)
+  estimatedCompletionAt DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  
+  notes        String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  // Relations
+  order             Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fulfillmentType  FulfillmentType   @relation(fields: [fulfillmentTypeId], references: [id])
+
+  // Indexes
+  @@index([orderId])
+  @@index([status])
+  @@index([fulfillmentTypeId])
+  @@index([assignedTo])
+  @@index([createdAt])
 }

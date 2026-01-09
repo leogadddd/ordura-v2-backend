@@ -15,6 +15,8 @@ interface CreateProductBody {
   cost: number;
   sellingPrice: number;
   isDraft?: boolean;
+  requiresFulfillment?: boolean;
+  fulfillmentTypeId?: string;
 }
 
 export const createProduct: RouteHandlerMethod = async (request, reply) => {
@@ -27,6 +29,8 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
       cost,
       sellingPrice,
       isDraft = false,
+      requiresFulfillment = false,
+      fulfillmentTypeId,
     } = request.body as CreateProductBody;
 
     // Validate required fields
@@ -79,12 +83,17 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
         sellingPrice,
         status: "ACTIVE",
         isDraft,
+        requiresFulfillment,
+        fulfillmentTypeId: requiresFulfillment ? fulfillmentTypeId : null,
       },
     });
 
     return sendSuccess(reply, product, "Product created successfully", 201);
   } catch (error: any) {
-    request.log.error(error);
+    console.error("Create product error:", error, {
+      body: request.body,
+      user: request.user,
+    });
     return sendError(reply, "Failed to create product", 500);
   }
 };

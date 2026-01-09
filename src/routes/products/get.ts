@@ -20,7 +20,10 @@ export const getProduct: RouteHandlerMethod = async (request, reply) => {
 
     return sendSuccess(reply, product, "Product retrieved successfully");
   } catch (error: any) {
-    request.log.error(error);
+    console.error("Get product error:", error, {
+      id: (request.params as any)?.id,
+      user: request.user,
+    });
     return sendError(reply, "Failed to fetch product", 500);
   }
 };

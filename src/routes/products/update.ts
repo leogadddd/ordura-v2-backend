@@ -16,6 +16,8 @@ interface UpdateProductBody {
   sellingPrice?: number;
   status?: "ACTIVE" | "INACTIVE" | "OUT_OF_STOCK";
   isDraft?: boolean;
+  requiresFulfillment?: boolean;
+  fulfillmentTypeId?: string | null;
 }
 
 interface UpdateProductParams {
@@ -46,6 +48,11 @@ export const updateProduct: RouteHandlerMethod = async (request, reply) => {
       });
     }
 
+    // Normalize fulfillment fields
+    if (updateData.requiresFulfillment === false) {
+      updateData.fulfillmentTypeId = null;
+    }
+
     // Update product
     const product = await prisma.product.update({
       where: { id },
@@ -54,7 +61,11 @@ export const updateProduct: RouteHandlerMethod = async (request, reply) => {
 
     return sendSuccess(reply, product, "Product updated successfully");
   } catch (error: any) {
-    request.log.error(error);
+    console.error("Update product error:", error, {
+      id: (request.params as any)?.id,
+      body: request.body,
+      user: request.user,
+    });
     return sendError(reply, "Failed to update product", 500);
   }
 };

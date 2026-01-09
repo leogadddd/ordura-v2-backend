@@ -26,7 +26,10 @@ export const deleteProduct: RouteHandlerMethod = async (request, reply) => {
 
     return sendSuccess(reply, {}, "Product deleted successfully");
   } catch (error: any) {
-    request.log.error(error);
+    console.error("Delete product error:", error, {
+      id: (request.params as any)?.id,
+      user: request.user,
+    });
     return sendError(reply, "Failed to delete product", 500);
   }
 };
