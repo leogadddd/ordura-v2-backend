@@ -9,6 +9,7 @@ interface RegisterBody {
   password: string;
   firstName?: string;
   lastName?: string;
+  roleId?: string;
 }
 
 export async function registerRoute(server: FastifyInstance) {
@@ -20,7 +21,8 @@ export async function registerRoute(server: FastifyInstance) {
       request: FastifyRequest<{ Body: RegisterBody }>,
       reply: FastifyReply
     ) => {
-      const { email, username, password, firstName, lastName } = request.body;
+      const { email, username, password, firstName, lastName, roleId } =
+        request.body;
 
       try {
         // Check if user exists
@@ -43,15 +45,10 @@ export async function registerRoute(server: FastifyInstance) {
             password: hashedPassword,
             firstName,
             lastName,
+            roleId,
           },
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            createdAt: true,
+          include: {
+            roleDetails: true,
           },
         });
 
@@ -61,7 +58,7 @@ export async function registerRoute(server: FastifyInstance) {
             sub: user.id,
             email: user.email,
             username: user.username,
-            role: user.role,
+            roleId: user.roleId,
           },
           { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
@@ -71,7 +68,7 @@ export async function registerRoute(server: FastifyInstance) {
             sub: user.id,
             email: user.email,
             username: user.username,
-            role: user.role,
+            roleId: user.roleId,
           },
           { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" }
         );
@@ -114,7 +111,8 @@ export async function registerRoute(server: FastifyInstance) {
               username: user.username,
               firstName: user.firstName,
               lastName: user.lastName,
-              role: user.role,
+              roleId: user.roleId,
+              roleDetails: user.roleDetails,
             },
           },
           "User registered successfully",

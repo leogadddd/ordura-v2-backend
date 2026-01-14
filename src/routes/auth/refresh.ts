@@ -37,7 +37,7 @@ export async function refreshRoute(server: FastifyInstance) {
             sub: session.user.id,
             email: session.user.email,
             username: session.user.username,
-            role: session.user.role,
+            roleId: session.user.roleId,
           },
           { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );

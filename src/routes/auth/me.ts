@@ -15,14 +15,14 @@ export async function meRoute(server: FastifyInstance) {
 
         const user = await prisma.commonUser.findUnique({
           where: { id: sub },
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            createdAt: true,
+          include: {
+            roleDetails: {
+              select: {
+                id: true,
+                name: true,
+                permissions: true,
+              },
+            },
           },
         });
 

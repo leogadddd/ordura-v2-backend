@@ -24,7 +24,7 @@ model CommonUser {
   password  String   // hashed password
   firstName String?
   lastName  String?
-  role      UserRole @default(CASHIER)
+  roleId    String?  // Reference to detailed role
   isActive  Boolean  @default(true)
   
   createdAt DateTime @default(now())
@@ -32,12 +32,14 @@ model CommonUser {
   lastLogin DateTime?
 
   // Relations
-  sessions      Session[]
-  orders        Order[]
+  roleDetails Role?      @relation(fields: [roleId], references: [id])
+  sessions    Session[]
+  orders      Order[]    // Orders created/handled by this employee
 
   @@index([email])
   @@index([username])
-  @@map("User")
+  @@index([roleId])
+  @@map("CommonUsers")
 }
 
 model Session {
@@ -56,10 +58,21 @@ model Session {
   @@index([refreshToken])
 }
 
-enum UserRole {
-  ADMIN
-  MANAGER
-  CASHIER
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions Json?    // Store permissions as JSON object
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  users       CommonUser[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("Roles")
 }
 
 // ============================================

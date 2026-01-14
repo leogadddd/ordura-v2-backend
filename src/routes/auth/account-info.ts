@@ -25,17 +25,14 @@ export async function accountInfoRoute(server: FastifyInstance) {
         // Fetch user details
         const user = await prisma.commonUser.findUnique({
           where: { id: sub },
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            isActive: true,
-            createdAt: true,
-            updatedAt: true,
-            lastLogin: true,
+          include: {
+            roleDetails: {
+              select: {
+                id: true,
+                name: true,
+                permissions: true,
+              },
+            },
           },
         });
 

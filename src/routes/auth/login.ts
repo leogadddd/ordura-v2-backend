@@ -27,6 +27,9 @@ export async function loginRoute(server: FastifyInstance) {
             OR: [{ email }, { username: email }],
             isActive: true,
           },
+          include: {
+            roleDetails: true,
+          },
         });
 
         if (!user) {
@@ -45,7 +48,7 @@ export async function loginRoute(server: FastifyInstance) {
             sub: user.id,
             email: user.email,
             username: user.username,
-            role: user.role,
+            roleId: user.roleId,
           },
           { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
@@ -55,7 +58,7 @@ export async function loginRoute(server: FastifyInstance) {
             sub: user.id,
             email: user.email,
             username: user.username,
-            role: user.role,
+            roleId: user.roleId,
           },
           { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" }
         );
@@ -104,7 +107,8 @@ export async function loginRoute(server: FastifyInstance) {
               username: user.username,
               firstName: user.firstName,
               lastName: user.lastName,
-              role: user.role,
+              roleId: user.roleId,
+              roleDetails: user.roleDetails,
             },
           },
           "Login successful"

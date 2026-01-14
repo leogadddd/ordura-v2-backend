@@ -5,6 +5,7 @@ import { refreshRoute } from "./auth/refresh";
 import { logoutRoute } from "./auth/logout";
 import { meRoute } from "./auth/me";
 import { accountInfoRoute } from "./auth/account-info";
+import { initRoute } from "./auth/init";
 
 export async function authRoutes(server: FastifyInstance) {
   await registerRoute(server);
@@ -13,4 +14,5 @@ export async function authRoutes(server: FastifyInstance) {
   await logoutRoute(server);
   await meRoute(server);
   await accountInfoRoute(server);
+  await initRoute(server);
 }

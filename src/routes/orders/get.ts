@@ -20,7 +20,15 @@ export const getOrder: RouteHandlerMethod = async (request, reply) => {
             email: true,
             firstName: true,
             lastName: true,
-            role: true,
+          },
+          include: {
+            roleDetails: {
+              select: {
+                id: true,
+                name: true,
+                permissions: true,
+              },
+            },
           },
         },
         items: {
