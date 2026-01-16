@@ -5,13 +5,13 @@ import { sendSuccess, sendError } from "../lib/response";
 interface CreateRoleBody {
   name: string;
   description?: string;
-  permissions?: any;
+  permissions?: string[];
 }
 
 interface UpdateRoleBody {
   name?: string;
   description?: string;
-  permissions?: any;
+  permissions?: string[];
   isActive?: boolean;
 }
 

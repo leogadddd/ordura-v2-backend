@@ -62,7 +62,7 @@ model Role {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
-  permissions Json?    // Store permissions as JSON object
+  permissions String[] // Array of permission strings, e.g., ["USERS:view", "*"]
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

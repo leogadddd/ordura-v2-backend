@@ -7,59 +7,59 @@ async function seedRoles() {
     {
       name: "Administrator",
       description: "Full system access with all permissions",
-      permissions: {
-        users: { create: true, read: true, update: true, delete: true },
-        roles: { create: true, read: true, update: true, delete: true },
-        products: { create: true, read: true, update: true, delete: true },
-        orders: { create: true, read: true, update: true, delete: true },
-        reports: { read: true },
-        settings: { read: true, update: true },
-      },
+      permissions: ["*"],
     },
     {
       name: "Manager",
       description: "Management level access for overseeing operations",
-      permissions: {
-        users: { create: true, read: true, update: true, delete: false },
-        roles: { read: true },
-        products: { create: true, read: true, update: true, delete: false },
-        orders: { create: true, read: true, update: true, delete: false },
-        reports: { read: true },
-        settings: { read: true, update: false },
-      },
+      permissions: [
+        "USERS:view",
+        "USERS:create",
+        "USERS:edit",
+        "ROLES:view",
+        "PRODUCTS:view",
+        "PRODUCTS:create",
+        "PRODUCTS:edit",
+        "ORDERS:view",
+        "ORDERS:create",
+        "ORDERS:edit",
+        "REPORTS:view",
+        "SETTINGS:view",
+      ],
     },
     {
       name: "Cashier",
       description: "Point of sale operations and basic order management",
-      permissions: {
-        users: { read: true },
-        products: { read: true },
-        orders: { create: true, read: true, update: true, delete: false },
-        reports: { read: false },
-        settings: { read: false },
-      },
+      permissions: [
+        "USERS:view",
+        "PRODUCTS:view",
+        "ORDERS:view",
+        "ORDERS:create",
+        "ORDERS:edit",
+      ],
     },
     {
       name: "Kitchen Staff",
       description: "Kitchen operations and order fulfillment",
-      permissions: {
-        users: { read: true },
-        products: { read: true },
-        orders: { read: true, update: true }, // Can update order status for fulfillment
-        reports: { read: false },
-        settings: { read: false },
-      },
+      permissions: [
+        "USERS:view",
+        "PRODUCTS:view",
+        "ORDERS:view",
+        "ORDERS:edit",
+      ],
     },
     {
       name: "Inventory Manager",
       description: "Product and inventory management",
-      permissions: {
-        users: { read: true },
-        products: { create: true, read: true, update: true, delete: true },
-        orders: { read: true },
-        reports: { read: true },
-        settings: { read: false },
-      },
+      permissions: [
+        "USERS:view",
+        "PRODUCTS:view",
+        "PRODUCTS:create",
+        "PRODUCTS:edit",
+        "PRODUCTS:delete",
+        "ORDERS:view",
+        "REPORTS:view",
+      ],
     },
   ];
 
@@ -75,6 +75,8 @@ async function seedRoles() {
       console.error(`❌ Error creating role ${roleData.name}:`, error);
     }
   }
+
+  console.log("🌱 Role seeding finished.");
 
   console.log("🎉 Roles seeding completed!");
 }
