@@ -20,13 +20,10 @@ export const getOrder: RouteHandlerMethod = async (request, reply) => {
             email: true,
             firstName: true,
             lastName: true,
-          },
-          include: {
             roleDetails: {
               select: {
                 id: true,
                 name: true,
-                permissions: true,
               },
             },
           },
@@ -71,6 +68,18 @@ export const getOrder: RouteHandlerMethod = async (request, reply) => {
         ...payment,
         amount: Number(payment.amount),
       })),
+      // Attach employee role permissions (normalized)
+      employee: {
+        ...(order.employee ?? {}),
+        roleDetails: {
+          ...(order.employee?.roleDetails ?? {}),
+          permissions: order.employee?.roleDetails?.id
+            ? await (
+                await import("../../lib/authorization")
+              ).getPermissionsForRole(order.employee.roleDetails.id)
+            : [],
+        },
+      },
     };
 
     return sendSuccess(reply, orderWithNumbers, "Order retrieved successfully");

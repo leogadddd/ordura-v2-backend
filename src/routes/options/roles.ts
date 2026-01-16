@@ -11,12 +11,20 @@ export async function rolesRoute(server: FastifyInstance) {
           id: true,
           name: true,
           description: true,
-          permissions: true,
         },
         orderBy: { name: "asc" },
       });
 
-      return sendSuccess(reply, roles, "Roles retrieved successfully");
+      // Attach normalized permissions for each role
+      const rolesWithPerms = [] as any[];
+      for (const role of roles) {
+        const perms = await (
+          await import("../../lib/authorization")
+        ).getPermissionsForRole(role.id);
+        rolesWithPerms.push({ ...role, permissions: perms });
+      }
+
+      return sendSuccess(reply, rolesWithPerms, "Roles retrieved successfully");
     } catch (error) {
       console.error("Error fetching roles:", error);
       return sendError(reply, "Failed to fetch roles");

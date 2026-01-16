@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendUnauthorized, sendError } from "../../lib/response";
+import { getPermissionsForRole } from "../../lib/authorization";
 import { authenticateWithCookie } from "../../lib/auth";
 
 export async function meRoute(server: FastifyInstance) {
@@ -20,13 +21,32 @@ export async function meRoute(server: FastifyInstance) {
               select: {
                 id: true,
                 name: true,
-                permissions: true,
               },
             },
           },
         });
 
-        return sendSuccess(reply, user, "Current user retrieved");
+        const permissions = user?.roleId
+          ? await getPermissionsForRole(user.roleId)
+          : [];
+
+        // Return only minimal required user information to avoid leaking sensitive/internal fields
+        const safeUser = {
+          id: user?.id,
+          email: user?.email,
+          username: user?.username,
+          firstName: user?.firstName,
+          lastName: user?.lastName,
+          role: user?.roleDetails
+            ? {
+                id: user.roleDetails.id,
+                name: user.roleDetails.name,
+                permissions,
+              }
+            : null,
+        };
+
+        return sendSuccess(reply, safeUser, "Current user retrieved");
       } catch (error) {
         console.error("Me error:", error, {
           userId: (request.user as any)?.sub,

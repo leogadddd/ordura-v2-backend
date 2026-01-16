@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { comparePassword } from "../../lib/auth";
+import { getPermissionsForRole } from "../../lib/authorization";
 import { sendSuccess, sendUnauthorized, sendError } from "../../lib/response";
 
 interface LoginBody {
@@ -42,6 +43,11 @@ export async function loginRoute(server: FastifyInstance) {
           return sendUnauthorized(reply, "Invalid credentials");
         }
 
+        // Compute permissions from normalized RolePermission mappings (don't rely on old Role.permissions)
+        const permissions = user.roleId
+          ? await getPermissionsForRole(user.roleId)
+          : [];
+
         // Generate tokens
         const accessToken = server.jwt.sign(
           {
@@ -49,6 +55,7 @@ export async function loginRoute(server: FastifyInstance) {
             email: user.email,
             username: user.username,
             roleId: user.roleId,
+            permissions,
           },
           { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
@@ -109,6 +116,7 @@ export async function loginRoute(server: FastifyInstance) {
               lastName: user.lastName,
               roleId: user.roleId,
               roleDetails: user.roleDetails,
+              permissions,
             },
           },
           "Login successful"

@@ -15,6 +15,10 @@
     "seed:fulfillment-types": "tsx src/scripts/seed-fulfillment-types.ts",
     "delete:fulfillment-type": "tsx src/scripts/delete-fulfillment-type.ts",
     "seed:roles": "tsx src/scripts/seed-roles.ts",
+    "print:permissions": "tsx src/lib/permissions.ts",
+    "seed:permissions": "tsx src/scripts/seed-permissions.ts",
+    "migrate:role-permissions": "tsx src/scripts/migrate-role-permissions.ts",
+    "test:auth": "tsx src/lib/authorization.test.ts",
     "seed:users": "tsx src/scripts/seed-users.ts"
   },
   "keywords": [],

@@ -5,32 +5,56 @@ import { deleteProduct } from "./delete";
 import { getProducts } from "./list";
 import { getProduct } from "./get";
 import { authenticateWithCookie } from "../../lib/auth";
+import { requirePermission } from "../../lib/authorization";
 
 export async function productRoutes(server: FastifyInstance) {
   // GET /api/products - List all products
-  server.get("/", { onRequest: authenticateWithCookie(server) }, getProducts);
+  server.get(
+    "/",
+    {
+      onRequest: authenticateWithCookie(server),
+      preHandler: requirePermission("PRODUCTS:view"),
+    },
+    getProducts
+  );
 
   // GET /api/products/:id - Get single product
-  server.get("/:id", { onRequest: authenticateWithCookie(server) }, getProduct);
+  server.get(
+    "/:id",
+    {
+      onRequest: authenticateWithCookie(server),
+      preHandler: requirePermission("PRODUCTS:view"),
+    },
+    getProduct
+  );
 
   // POST /api/products - Create new product
   server.post(
     "/",
-    { onRequest: authenticateWithCookie(server) },
+    {
+      onRequest: authenticateWithCookie(server),
+      preHandler: requirePermission("PRODUCTS:create"),
+    },
     createProduct
   );
 
   // PUT /api/products/:id - Update product
   server.put(
     "/:id",
-    { onRequest: authenticateWithCookie(server) },
+    {
+      onRequest: authenticateWithCookie(server),
+      preHandler: requirePermission("PRODUCTS:edit"),
+    },
     updateProduct
   );
 
   // DELETE /api/products/:id - Delete product
   server.delete(
     "/:id",
-    { onRequest: authenticateWithCookie(server) },
+    {
+      onRequest: authenticateWithCookie(server),
+      preHandler: requirePermission("PRODUCTS:delete"),
+    },
     deleteProduct
   );
 }

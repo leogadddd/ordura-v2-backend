@@ -3,14 +3,36 @@ import { getOrders } from "./list";
 import { getOrder } from "./get";
 import { createOrder } from "./create";
 import { authenticateWithCookie } from "../../lib/auth";
+import { requirePermission } from "../../lib/authorization";
 
 export async function orderRoutes(server: FastifyInstance) {
   // GET /api/orders - List all orders with filters
-  server.get("/", { onRequest: authenticateWithCookie(server) }, getOrders);
+  server.get(
+    "/",
+    {
+      onRequest: authenticateWithCookie(server),
+      preHandler: requirePermission("ORDERS:view"),
+    },
+    getOrders
+  );
 
   // POST /api/orders - Create new order
-  server.post("/", { onRequest: authenticateWithCookie(server) }, createOrder);
+  server.post(
+    "/",
+    {
+      onRequest: authenticateWithCookie(server),
+      preHandler: requirePermission("ORDERS:create"),
+    },
+    createOrder
+  );
 
   // GET /api/orders/:id - Get single order with items and payments
-  server.get("/:id", { onRequest: authenticateWithCookie(server) }, getOrder);
+  server.get(
+    "/:id",
+    {
+      onRequest: authenticateWithCookie(server),
+      preHandler: requirePermission("ORDERS:view"),
+    },
+    getOrder
+  );
 }

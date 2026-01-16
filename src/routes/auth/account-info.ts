@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendError } from "../../lib/response";
+import { getPermissionsForRole } from "../../lib/authorization";
 import { authenticateWithCookie } from "../../lib/auth";
 
 const parseDecimal = (value: unknown): number => {
@@ -30,7 +31,6 @@ export async function accountInfoRoute(server: FastifyInstance) {
               select: {
                 id: true,
                 name: true,
-                permissions: true,
               },
             },
           },
@@ -96,7 +96,15 @@ export async function accountInfoRoute(server: FastifyInstance) {
         };
 
         const response = {
-          user,
+          user: {
+            ...user,
+            roleDetails: {
+              ...(user?.roleDetails ?? {}),
+              permissions: user?.roleId
+                ? await getPermissionsForRole(user.roleId)
+                : [],
+            },
+          },
           stats,
         };
 

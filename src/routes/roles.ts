@@ -1,6 +1,12 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../lib/prisma";
+import { getAllPermissions } from "../lib/permissions";
 import { sendSuccess, sendError } from "../lib/response";
+import { authenticate } from "../lib/auth";
+import {
+  requirePermission,
+  invalidateRolePermissions,
+} from "../lib/authorization";
 
 interface CreateRoleBody {
   name: string;
@@ -17,22 +23,27 @@ interface UpdateRoleBody {
 
 export async function rolesRoutes(server: FastifyInstance) {
   // Get all roles
-  server.get("/roles", async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const roles = await prisma.role.findMany({
-        where: { isActive: true },
-        orderBy: { createdAt: "desc" },
-      });
-      return sendSuccess(reply, roles, "Roles retrieved successfully");
-    } catch (error) {
-      console.error("Error fetching roles:", error);
-      return sendError(reply, "Failed to fetch roles");
+  server.get(
+    "/roles",
+    { onRequest: authenticate, preHandler: requirePermission("ROLES:view") },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const roles = await prisma.role.findMany({
+          where: { isActive: true },
+          orderBy: { createdAt: "desc" },
+        });
+        return sendSuccess(reply, roles, "Roles retrieved successfully");
+      } catch (error) {
+        console.error("Error fetching roles:", error);
+        return sendError(reply, "Failed to fetch roles");
+      }
     }
-  });
+  );
 
   // Get role by ID
   server.get(
     "/roles/:id",
+    { onRequest: authenticate, preHandler: requirePermission("ROLES:view") },
     async (
       request: FastifyRequest<{ Params: { id: string } }>,
       reply: FastifyReply
@@ -58,12 +69,26 @@ export async function rolesRoutes(server: FastifyInstance) {
   // Create new role
   server.post(
     "/roles",
+    { onRequest: authenticate, preHandler: requirePermission("ROLES:create") },
     async (
       request: FastifyRequest<{ Body: CreateRoleBody }>,
       reply: FastifyReply
     ) => {
       try {
         const { name, description, permissions } = request.body;
+
+        // Validate provided permissions
+        if (permissions && permissions.length > 0) {
+          const allowed = new Set(getAllPermissions());
+          const invalid = permissions.filter((p) => !allowed.has(p));
+          if (invalid.length > 0) {
+            return sendError(
+              reply,
+              `Invalid permissions provided: ${invalid.join(", ")}`,
+              400
+            );
+          }
+        }
 
         // Check if role name already exists
         const existingRole = await prisma.role.findUnique({
@@ -78,9 +103,32 @@ export async function rolesRoutes(server: FastifyInstance) {
           data: {
             name,
             description,
-            permissions,
           },
         });
+
+        // If permissions provided, ensure normalized Permission and RolePermission records exist
+        if (permissions && permissions.length > 0) {
+          for (const raw of permissions) {
+            const nameStr = String(raw).trim();
+            if (!nameStr) continue;
+
+            const permission = await prisma.permission.upsert({
+              where: { name: nameStr },
+              update: {},
+              create: { name: nameStr },
+            });
+
+            const existing = await prisma.rolePermission.findFirst({
+              where: { roleId: role.id, permissionId: permission.id },
+            });
+            if (!existing) {
+              await prisma.rolePermission.create({
+                data: { roleId: role.id, permissionId: permission.id },
+              });
+            }
+          }
+          invalidateRolePermissions(role.id);
+        }
 
         return sendSuccess(reply, role, "Role created successfully", 201);
       } catch (error) {
@@ -93,6 +141,7 @@ export async function rolesRoutes(server: FastifyInstance) {
   // Update role
   server.put(
     "/roles/:id",
+    { onRequest: authenticate, preHandler: requirePermission("ROLES:edit") },
     async (
       request: FastifyRequest<{ Params: { id: string }; Body: UpdateRoleBody }>,
       reply: FastifyReply
@@ -100,6 +149,19 @@ export async function rolesRoutes(server: FastifyInstance) {
       try {
         const { id } = request.params;
         const { name, description, permissions, isActive } = request.body;
+
+        // Validate provided permissions
+        if (permissions && permissions.length > 0) {
+          const allowed = new Set(getAllPermissions());
+          const invalid = permissions.filter((p) => !allowed.has(p));
+          if (invalid.length > 0) {
+            return sendError(
+              reply,
+              `Invalid permissions provided: ${invalid.join(", ")}`,
+              400
+            );
+          }
+        }
 
         // Check if role exists
         const existingRole = await prisma.role.findUnique({
@@ -130,6 +192,49 @@ export async function rolesRoutes(server: FastifyInstance) {
           },
         });
 
+        // Sync normalized permissions if provided
+        if (permissions !== undefined) {
+          const desired = (permissions ?? [])
+            .map((p) => String(p).trim())
+            .filter(Boolean);
+
+          // Upsert permissions and collect ids
+          const permissionIds: string[] = [];
+          for (const pname of desired) {
+            const permission = await prisma.permission.upsert({
+              where: { name: pname },
+              update: {},
+              create: { name: pname },
+            });
+            permissionIds.push(permission.id);
+          }
+
+          // Existing mappings
+          const existingMappings = await prisma.rolePermission.findMany({
+            where: { roleId: id },
+          });
+          const existingIds = existingMappings.map((m) => m.permissionId);
+
+          // Delete removed
+          for (const existingId of existingIds) {
+            if (!permissionIds.includes(existingId)) {
+              await prisma.rolePermission.deleteMany({
+                where: { roleId: id, permissionId: existingId },
+              });
+            }
+          }
+
+          // Add new
+          for (const pid of permissionIds) {
+            if (!existingIds.includes(pid)) {
+              await prisma.rolePermission.create({
+                data: { roleId: id, permissionId: pid },
+              });
+            }
+          }
+          invalidateRolePermissions(id);
+        }
+
         return sendSuccess(reply, updatedRole, "Role updated successfully");
       } catch (error) {
         console.error("Error updating role:", error);
@@ -141,6 +246,7 @@ export async function rolesRoutes(server: FastifyInstance) {
   // Delete role (soft delete by setting isActive to false)
   server.delete(
     "/roles/:id",
+    { onRequest: authenticate, preHandler: requirePermission("ROLES:delete") },
     async (
       request: FastifyRequest<{ Params: { id: string } }>,
       reply: FastifyReply
@@ -175,6 +281,7 @@ export async function rolesRoutes(server: FastifyInstance) {
           where: { id },
           data: { isActive: false },
         });
+        invalidateRolePermissions(id);
 
         return sendSuccess(reply, null, "Role deleted successfully");
       } catch (error) {

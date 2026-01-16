@@ -62,17 +62,46 @@ model Role {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
-  permissions String[] // Array of permission strings, e.g., ["USERS:view", "*"]
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
   // Relations
   users       CommonUser[]
+  rolePermissions RolePermission[]
 
   @@index([name])
   @@index([isActive])
   @@map("Roles")
+}
+
+// Normalized permissions for RBAC
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "USERS:view"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  roleMappings RolePermission[]
+
+  @@index([name])
+  @@map("Permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId       String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("RolePermissions")
 }
 
 // ============================================
