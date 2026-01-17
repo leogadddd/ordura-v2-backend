@@ -39,6 +39,40 @@ export async function getPermissionsForRole(roleId: string): Promise<string[]> {
   return perms;
 }
 
+export async function getUserPermissionMappings(userId: string) {
+  if (!userId) return { allowed: [], denied: [] };
+  const mappings = await (prisma as any).userPermission.findMany({
+    where: { userId },
+    include: { permission: true },
+  });
+  const allowed: string[] = [];
+  const denied: string[] = [];
+  for (const m of mappings) {
+    if (m.isAllowed) allowed.push(m.permission.name);
+    else denied.push(m.permission.name);
+  }
+  return { allowed, denied };
+}
+
+/**
+ * Compute the effective allowed permissions for a user by starting with role
+ * permissions and applying per-user allow/deny overrides.
+ */
+export async function getEffectivePermissionsForUser(
+  userId: string,
+  roleId?: string
+): Promise<string[]> {
+  const base = roleId ? await getPermissionsForRole(roleId) : [];
+  const { allowed, denied } = await getUserPermissionMappings(userId);
+
+  const set = new Set<string>(base);
+  // Apply explicit allows
+  for (const p of allowed) set.add(p);
+  // Apply explicit denies
+  for (const p of denied) set.delete(p);
+  return Array.from(set);
+}
+
 export function invalidateRolePermissions(roleId: string) {
   rolePermissionsCache.delete(roleId);
 }
@@ -52,11 +86,11 @@ export function requirePermission(permission: string) {
     if (!user) {
       return reply.code(401).send({ error: "Unauthorized" });
     }
-
-    // Prefer permissions attached to user (e.g., in JWT). Fallback to role lookup.
+    // Prefer permissions attached to user (e.g., from JWT or session). If not
+    // present, compute the effective set from role + user overrides.
     let perms: string[] | undefined = user.permissions;
-    if (!perms && user.roleId) {
-      perms = await getPermissionsForRole(user.roleId);
+    if (!perms) {
+      perms = await getEffectivePermissionsForUser(user.id, user.roleId);
     }
 
     if (!hasPermission(perms, permission)) {
@@ -68,6 +102,8 @@ export function requirePermission(permission: string) {
 export default {
   hasPermission,
   getPermissionsForRole,
+  getUserPermissionMappings,
+  getEffectivePermissionsForUser,
   invalidateRolePermissions,
   requirePermission,
 };

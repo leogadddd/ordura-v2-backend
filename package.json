@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "BROWSER=chromium prisma studio",
+    "prisma:reset": "prisma migrate reset",
     "seed:products": "tsx src/scripts/seed-products.ts",
     "delete:products": "tsx src/scripts/delete-products.ts",
     "seed:fulfillment-types": "tsx src/scripts/seed-fulfillment-types.ts",

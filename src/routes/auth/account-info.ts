@@ -1,7 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendError } from "../../lib/response";
-import { getPermissionsForRole } from "../../lib/authorization";
+import {
+  getPermissionsForRole,
+  getUserPermissionMappings,
+  getEffectivePermissionsForUser,
+} from "../../lib/authorization";
 import { authenticateWithCookie } from "../../lib/auth";
 
 const parseDecimal = (value: unknown): number => {
@@ -95,15 +99,28 @@ export async function accountInfoRoute(server: FastifyInstance) {
           lastLoginDate: user.lastLogin?.toISOString(),
         };
 
+        const rolePermissions = user?.roleId
+          ? await getPermissionsForRole(user.roleId)
+          : [];
+        const { allowed, denied } = await getUserPermissionMappings(user.id);
+        const userPermissions = [
+          ...allowed.map((n) => ({ name: n, isAllowed: true })),
+          ...denied.map((n) => ({ name: n, isAllowed: false })),
+        ];
+        const effectivePermissions = await getEffectivePermissionsForUser(
+          user.id,
+          user.roleId
+        );
+
         const response = {
           user: {
             ...user,
             roleDetails: {
               ...(user?.roleDetails ?? {}),
-              permissions: user?.roleId
-                ? await getPermissionsForRole(user.roleId)
-                : [],
+              permissions: rolePermissions,
             },
+            userPermissions,
+            permissions: effectivePermissions,
           },
           stats,
         };

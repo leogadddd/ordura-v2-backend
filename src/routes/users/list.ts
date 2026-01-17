@@ -1,6 +1,11 @@
 import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendError } from "../../lib/response";
+import {
+  getPermissionsForRole,
+  getEffectivePermissionsForUser,
+  hasPermission,
+} from "../../lib/authorization";
 
 interface ListUsersQuery {
   page?: string;
@@ -60,10 +65,46 @@ export const getUsers: RouteHandlerMethod = async (request, reply) => {
       prisma.commonUser.count({ where }),
     ]);
 
+    // Determine viewer permissions (from JWT if present, else compute)
+    let viewerPerms: string[] | undefined = undefined;
+    try {
+      const viewer = request.user as any;
+      viewerPerms = viewer?.permissions;
+      if (!viewerPerms) {
+        viewerPerms = await getEffectivePermissionsForUser(
+          viewer?.sub,
+          viewer?.roleId
+        );
+      }
+    } catch {
+      viewerPerms = [];
+    }
+
+    // Fetch role permissions for all roles present in this page (uses internal cache)
+    const roleIds = Array.from(
+      new Set(users.map((u) => u.roleId).filter((v): v is string => Boolean(v)))
+    );
+    const rolePermMap: Record<string, string[]> = {};
+    await Promise.all(
+      roleIds.map(async (rid) => {
+        rolePermMap[rid] = await getPermissionsForRole(rid);
+      })
+    );
+
+    // Attach extra info per user (rolePermissions, canEdit, canEditRole)
+    const enhanced = users.map((u) => {
+      const rolePerms = u.roleId ? rolePermMap[u.roleId] || [] : [];
+      const canEdit =
+        (request.user as any)?.sub === u.id ||
+        hasPermission(viewerPerms, "USERS:edit");
+      const canEditRole = hasPermission(viewerPerms, "ROLES:edit");
+      return { ...u, rolePermissions: rolePerms, canEdit, canEditRole };
+    });
+
     return sendSuccess(
       reply,
       {
-        items: users,
+        items: enhanced,
         pagination: {
           page: pageNum,
           limit: limitNum,

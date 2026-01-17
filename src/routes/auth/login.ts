@@ -1,7 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { comparePassword } from "../../lib/auth";
-import { getPermissionsForRole } from "../../lib/authorization";
+import {
+  getEffectivePermissionsForUser,
+  getPermissionsForRole,
+  getUserPermissionMappings,
+} from "../../lib/authorization";
 import { sendSuccess, sendUnauthorized, sendError } from "../../lib/response";
 
 interface LoginBody {
@@ -43,10 +47,21 @@ export async function loginRoute(server: FastifyInstance) {
           return sendUnauthorized(reply, "Invalid credentials");
         }
 
-        // Compute permissions from normalized RolePermission mappings (don't rely on old Role.permissions)
-        const permissions = user.roleId
+        // Compute effective permissions from role + per-user overrides
+        const permissions = await getEffectivePermissionsForUser(
+          user.id,
+          user.roleId
+        );
+
+        // Also fetch explicit role permissions and per-user mappings
+        const rolePermissions = user.roleId
           ? await getPermissionsForRole(user.roleId)
           : [];
+        const { allowed, denied } = await getUserPermissionMappings(user.id);
+        const userPermissions = [
+          ...allowed.map((n) => ({ name: n, isAllowed: true })),
+          ...denied.map((n) => ({ name: n, isAllowed: false })),
+        ];
 
         // Generate tokens
         const accessToken = server.jwt.sign(
@@ -56,6 +71,8 @@ export async function loginRoute(server: FastifyInstance) {
             username: user.username,
             roleId: user.roleId,
             permissions,
+            rolePermissions,
+            userPermissions,
           },
           { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
@@ -117,6 +134,8 @@ export async function loginRoute(server: FastifyInstance) {
               roleId: user.roleId,
               roleDetails: user.roleDetails,
               permissions,
+              rolePermissions,
+              userPermissions,
             },
           },
           "Login successful"

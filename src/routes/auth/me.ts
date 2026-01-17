@@ -1,7 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendUnauthorized, sendError } from "../../lib/response";
-import { getPermissionsForRole } from "../../lib/authorization";
+import {
+  getPermissionsForRole,
+  getUserPermissionMappings,
+  getEffectivePermissionsForUser,
+} from "../../lib/authorization";
 import { authenticateWithCookie } from "../../lib/auth";
 
 export async function meRoute(server: FastifyInstance) {
@@ -26,9 +30,20 @@ export async function meRoute(server: FastifyInstance) {
           },
         });
 
-        const permissions = user?.roleId
+        const rolePermissions = user?.roleId
           ? await getPermissionsForRole(user.roleId)
           : [];
+
+        const { allowed, denied } = await getUserPermissionMappings(user?.id);
+        const userPermissions = [
+          ...allowed.map((n) => ({ name: n, isAllowed: true })),
+          ...denied.map((n) => ({ name: n, isAllowed: false })),
+        ];
+
+        const effectivePermissions = await getEffectivePermissionsForUser(
+          user?.id,
+          user?.roleId
+        );
 
         // Return only minimal required user information to avoid leaking sensitive/internal fields
         const safeUser = {
@@ -41,9 +56,11 @@ export async function meRoute(server: FastifyInstance) {
             ? {
                 id: user.roleDetails.id,
                 name: user.roleDetails.name,
-                permissions,
+                permissions: rolePermissions,
               }
             : null,
+          userPermissions,
+          permissions: effectivePermissions,
         };
 
         return sendSuccess(reply, safeUser, "Current user retrieved");

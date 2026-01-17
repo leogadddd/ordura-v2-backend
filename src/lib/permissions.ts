@@ -1,19 +1,31 @@
 export const PERMISSIONS = {
   //   DASHBOARD: ["view"] as const,
-  POS: ["view", "order"] as const,
-  USERS: ["view", "create", "edit", "delete", "manage"] as const,
-  ROLES: ["view", "create", "edit", "delete", "manage"] as const,
-  PRODUCTS: ["view", "create", "edit", "delete", "manage"] as const,
-  ORDERS: ["view", "create", "edit", "manage"] as const,
-  REPORTS: ["view"] as const,
-  SETTINGS: ["view", "manage"] as const,
+  POS: ["VIEW", "ORDER"] as const,
+  USERS: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
+  ROLES: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
+  PRODUCTS: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
+  ORDERS: ["VIEW", "CREATE", "EDIT", "MANAGE"] as const,
+  REPORTS: ["VIEW"] as const,
+  SETTINGS: ["VIEW", "MANAGE"] as const,
 } as const;
 
 // Resource wildcard entries to generate e.g. `PRODUCTS:*`
-export const RESOURCE_WILDCARD_FEATURES: Feature[] = ["PRODUCTS"];
+export const RESOURCE_WILDCARD_FEATURES: Feature[] = [
+  "PRODUCTS",
+  "USERS",
+  "ROLES",
+  "ORDERS",
+];
 
 // Action wildcard entries to generate e.g. `*:manage`
-export const ACTION_WILDCARDS = ["manage"] as const;
+export const ACTION_WILDCARDS = [
+  "MANAGE",
+  "VIEW",
+  "CREATE",
+  "EDIT",
+  "DELETE",
+  "ORDER",
+] as const;
 
 export type PermissionsMap = typeof PERMISSIONS;
 export type Feature = keyof PermissionsMap;

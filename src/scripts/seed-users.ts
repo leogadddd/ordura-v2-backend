@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma";
 import { hashPassword } from "../lib/auth";
 
-async function seedUsers() {
+export async function seedUsers() {
   console.log("🌱 Seeding users...");
 
   const users = [
@@ -93,11 +93,14 @@ async function seedUsers() {
   console.log("🎉 Users seeding completed!");
 }
 
-seedUsers()
-  .catch((e) => {
-    console.error("❌ Error seeding users:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// If this script is run directly (as a CLI), run the seeder
+if (require.main === module) {
+  seedUsers()
+    .catch((e) => {
+      console.error("❌ Error seeding users:", e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

@@ -18,23 +18,24 @@ datasource db {
 // ============================================
 
 model CommonUser {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String   @unique
-  password  String   // hashed password
+  id        String  @id @default(cuid())
+  email     String  @unique
+  username  String  @unique
+  password  String // hashed password
   firstName String?
   lastName  String?
-  roleId    String?  // Reference to detailed role
-  isActive  Boolean  @default(true)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  roleId    String? // Reference to detailed role
+  isActive  Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   lastLogin DateTime?
 
   // Relations
-  roleDetails Role?      @relation(fields: [roleId], references: [id])
-  sessions    Session[]
-  orders      Order[]    // Orders created/handled by this employee
+  roleDetails     Role?            @relation(fields: [roleId], references: [id])
+  sessions        Session[]
+  orders          Order[] // Orders created/handled by this employee
+  userPermissions UserPermission[]
 
   @@index([email])
   @@index([username])
@@ -49,9 +50,9 @@ model Session {
   expiresAt    DateTime
   ipAddress    String?
   userAgent    String?
-  
+
   createdAt DateTime @default(now())
-  
+
   user CommonUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -63,11 +64,12 @@ model Role {
   name        String   @unique
   description String?
   isActive    Boolean  @default(true)
+  isProtected Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
-  users       CommonUser[]
+  users           CommonUser[]
   rolePermissions RolePermission[]
 
   @@index([name])
@@ -85,6 +87,7 @@ model Permission {
 
   // Relations
   roleMappings RolePermission[]
+  userMappings UserPermission[]
 
   @@index([name])
   @@map("Permissions")
@@ -104,34 +107,51 @@ model RolePermission {
   @@map("RolePermissions")
 }
 
+// Per-user permission overrides. These are applied on top of role permissions
+// and may either explicitly allow or explicitly deny a permission for a user.
+model UserPermission {
+  id           String     @id @default(cuid())
+  user         CommonUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+  isAllowed    Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+  @@map("UserPermissions")
+}
+
 // ============================================
 // Product Management
 // ============================================
 
 model Product {
-  id           String   @id
-  sku          String   @unique // Auto-generated SKU
-  name         String
-  category     String
-  description  String?
-  notes        String?
-  
+  id          String  @id
+  sku         String  @unique // Auto-generated SKU
+  name        String
+  category    String
+  description String?
+  notes       String?
+
   // Pricing
-  cost         Float    // Cost price
-  sellingPrice Float    // Selling price
-  
+  cost         Float // Cost price
+  sellingPrice Float // Selling price
+
   // Status
-  status       ProductStatus @default(ACTIVE)
-  isDraft      Boolean  @default(false)
-  
+  status  ProductStatus @default(ACTIVE)
+  isDraft Boolean       @default(false)
+
   // Fulfillment Configuration
-  requiresFulfillment Boolean @default(false) // whether this product needs assembly/cooking/etc
+  requiresFulfillment Boolean          @default(false) // whether this product needs assembly/cooking/etc
   fulfillmentTypeId   String?
   fulfillmentType     FulfillmentType? @relation(fields: [fulfillmentTypeId], references: [id])
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([sku])
   @@index([category])
   @@index([status])
@@ -196,13 +216,13 @@ enum FulfillmentStatus {
 }
 
 model FulfillmentType {
-  id         String   @id @default(cuid())
-  code       String   @unique
-  name       String
-  isActive   Boolean  @default(true)
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   products     Product[]
   fulfillments Fulfillment[]
@@ -212,40 +232,40 @@ model FulfillmentType {
 }
 
 model Order {
-  id           String      @id @default(cuid())
-  orderNumber  String      @unique
-  type         OrderType   @default(SALE)
-  status       OrderStatus @default(OPEN)
-  taxMode      TaxMode     @default(EXCLUSIVE)
-  currency     String      @default("PHP")
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  type        OrderType   @default(SALE)
+  status      OrderStatus @default(OPEN)
+  taxMode     TaxMode     @default(EXCLUSIVE)
+  currency    String      @default("PHP")
 
   // Customer snapshot (optional)
-  customerName String?
+  customerName  String?
   customerPhone String?
   customerEmail String?
 
   // Totals
-  subtotal       Decimal     @db.Decimal(12, 2)
-  orderDiscount  Decimal     @db.Decimal(12, 2) @default(0)  // discount on subtotal
-  discountTotal  Decimal     @db.Decimal(12, 2) @default(0)  // line item discounts
-  serviceFee     Decimal     @db.Decimal(12, 2) @default(0)
-  deliveryFee    Decimal     @db.Decimal(12, 2) @default(0)
-  taxTotal       Decimal     @db.Decimal(12, 2) @default(0)
-  grandTotal     Decimal     @db.Decimal(12, 2)
-  paidTotal      Decimal     @db.Decimal(12, 2) @default(0)
-  changeDue      Decimal     @db.Decimal(12, 2) @default(0)
-  dueAmount      Decimal     @db.Decimal(12, 2) @default(0)
+  subtotal      Decimal @db.Decimal(12, 2)
+  orderDiscount Decimal @default(0) @db.Decimal(12, 2) // discount on subtotal
+  discountTotal Decimal @default(0) @db.Decimal(12, 2) // line item discounts
+  serviceFee    Decimal @default(0) @db.Decimal(12, 2)
+  deliveryFee   Decimal @default(0) @db.Decimal(12, 2)
+  taxTotal      Decimal @default(0) @db.Decimal(12, 2)
+  grandTotal    Decimal @db.Decimal(12, 2)
+  paidTotal     Decimal @default(0) @db.Decimal(12, 2)
+  changeDue     Decimal @default(0) @db.Decimal(12, 2)
+  dueAmount     Decimal @default(0) @db.Decimal(12, 2)
 
-  notes       String?
-  employeeId  String
-  createdAt   DateTime    @default(now())
-  closedAt    DateTime?
+  notes      String?
+  employeeId String
+  createdAt  DateTime  @default(now())
+  closedAt   DateTime?
 
   // Relations
-  employee      CommonUser    @relation(fields: [employeeId], references: [id])
-  items         OrderItem[]
-  payments      Payment[]
-  fulfillments  Fulfillment[]
+  employee     CommonUser    @relation(fields: [employeeId], references: [id])
+  items        OrderItem[]
+  payments     Payment[]
+  fulfillments Fulfillment[]
 
   // Indexes
   @@index([status])
@@ -254,9 +274,9 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
-  orderId   String
-  lineNo    Int
+  id      String @id @default(cuid())
+  orderId String
+  lineNo  Int
 
   // Product snapshot (no FK)
   productId String?
@@ -265,13 +285,13 @@ model OrderItem {
   category  String?
 
   // Pricing
-  unitPrice   Decimal  @db.Decimal(12, 2)
-  unitCost    Decimal? @db.Decimal(12, 2)
-  quantity    Decimal  @db.Decimal(12, 3)
-  discount    Decimal  @db.Decimal(12, 2) @default(0)
-  taxRate     Decimal? @db.Decimal(5, 4)  // e.g. 0.1200 for 12%
-  taxAmount   Decimal  @db.Decimal(12, 2) @default(0)
-  lineTotal   Decimal  @db.Decimal(12, 2)
+  unitPrice Decimal  @db.Decimal(12, 2)
+  unitCost  Decimal? @db.Decimal(12, 2)
+  quantity  Decimal  @db.Decimal(12, 3)
+  discount  Decimal  @default(0) @db.Decimal(12, 2)
+  taxRate   Decimal? @db.Decimal(5, 4) // e.g. 0.1200 for 12%
+  taxAmount Decimal  @default(0) @db.Decimal(12, 2)
+  lineTotal Decimal  @db.Decimal(12, 2)
 
   notes     String?
   createdAt DateTime @default(now())
@@ -284,16 +304,16 @@ model OrderItem {
 }
 
 model Payment {
-  id           String        @id @default(cuid())
-  orderId      String
-  method       PaymentMethod
-  status       PaymentStatus @default(PAID)
-  amount       Decimal       @db.Decimal(12, 2)
-  currency     String        @default("USD")
-  reference    String?
+  id            String        @id @default(cuid())
+  orderId       String
+  method        PaymentMethod
+  status        PaymentStatus @default(PAID)
+  amount        Decimal       @db.Decimal(12, 2)
+  currency      String        @default("USD")
+  reference     String?
   externalTxnId String?
-  receivedAt   DateTime      @default(now())
-  metadata     Json?
+  receivedAt    DateTime      @default(now())
+  metadata      Json?
 
   // Relations
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -310,25 +330,25 @@ model Payment {
 // ============================================
 
 model Fulfillment {
-  id           String               @id @default(cuid())
-  orderId      String
+  id                String            @id @default(cuid())
+  orderId           String
   fulfillmentTypeId String
-  status       FulfillmentStatus    @default(PENDING)
-  
+  status            FulfillmentStatus @default(PENDING)
+
   // Assignment & Timing
-  assignedTo   String?              // employeeId - who's responsible
-  priority     Int                  @default(0)
+  assignedTo            String? // employeeId - who's responsible
+  priority              Int       @default(0)
   estimatedCompletionAt DateTime?
-  startedAt    DateTime?
-  completedAt  DateTime?
-  
-  notes        String?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+  startedAt             DateTime?
+  completedAt           DateTime?
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  order             Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  fulfillmentType  FulfillmentType   @relation(fields: [fulfillmentTypeId], references: [id])
+  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fulfillmentType FulfillmentType @relation(fields: [fulfillmentTypeId], references: [id])
 
   // Indexes
   @@index([orderId])

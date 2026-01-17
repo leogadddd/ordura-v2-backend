@@ -9,6 +9,7 @@ import { orderRoutes } from "./routes/orders";
 import { optionsRoutes } from "./routes/options";
 import { rolesRoutes } from "./routes/roles";
 import { userRoutes } from "./routes/users";
+import { seedRoles } from "./scripts/seed-roles";
 // import { posRoutes } from "./routes/pos";
 // import { inventoryRoutes } from "./routes/inventory";
 // import { reportsRoutes } from "./routes/reports";
@@ -53,6 +54,9 @@ server.register(userRoutes, { prefix: "/api/users" });
 // Start server
 const start = async () => {
   try {
+    // Ensure essential roles exist on startup (do NOT auto-create admin user)
+    await seedRoles();
+
     const port = parseInt(process.env.PORT || "3000");
     await server.listen({ port, host: "0.0.0.0" });
     console.log(`🚀 Server running on http://localhost:${port}`);
