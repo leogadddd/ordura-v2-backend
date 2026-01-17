@@ -53,15 +53,7 @@ export async function loginRoute(server: FastifyInstance) {
           user.roleId
         );
 
-        // Also fetch explicit role permissions and per-user mappings
-        const rolePermissions = user.roleId
-          ? await getPermissionsForRole(user.roleId)
-          : [];
-        const { allowed, denied } = await getUserPermissionMappings(user.id);
-        const userPermissions = [
-          ...allowed.map((n) => ({ name: n, isAllowed: true })),
-          ...denied.map((n) => ({ name: n, isAllowed: false })),
-        ];
+        // Compute effective permissions from role + per-user overrides (single array)
 
         // Generate tokens
         const accessToken = server.jwt.sign(
@@ -71,8 +63,6 @@ export async function loginRoute(server: FastifyInstance) {
             username: user.username,
             roleId: user.roleId,
             permissions,
-            rolePermissions,
-            userPermissions,
           },
           { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
@@ -134,8 +124,6 @@ export async function loginRoute(server: FastifyInstance) {
               roleId: user.roleId,
               roleDetails: user.roleDetails,
               permissions,
-              rolePermissions,
-              userPermissions,
             },
           },
           "Login successful"

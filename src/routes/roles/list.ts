@@ -7,8 +7,29 @@ export const getRoles: RouteHandlerMethod = async (request, reply) => {
     const roles = await prisma.role.findMany({
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
+      include: {
+        // include mapped permissions (via RolePermission -> Permission.name)
+        rolePermissions: {
+          include: { permission: { select: { name: true } } },
+        },
+      },
     });
-    return sendSuccess(reply, roles, "Roles retrieved successfully");
+
+    // Map rolePermissions to a simple `permissions: string[]` field expected by frontend
+    const mapped = roles.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      isActive: r.isActive,
+      isProtected: r.isProtected,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      permissions: (r.rolePermissions || []).map(
+        (rp: any) => rp.permission.name
+      ),
+    }));
+
+    return sendSuccess(reply, mapped, "Roles retrieved successfully");
   } catch (error) {
     console.error("Error fetching roles:", error);
     return sendError(reply, "Failed to fetch roles");

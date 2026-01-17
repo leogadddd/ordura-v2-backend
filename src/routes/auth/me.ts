@@ -30,20 +30,9 @@ export async function meRoute(server: FastifyInstance) {
           },
         });
 
-        const rolePermissions = user?.roleId
-          ? await getPermissionsForRole(user.roleId)
-          : [];
-
-        const { allowed, denied } = await getUserPermissionMappings(user?.id);
-        const userPermissions = [
-          ...allowed.map((n) => ({ name: n, isAllowed: true })),
-          ...denied.map((n) => ({ name: n, isAllowed: false })),
-        ];
-
-        const effectivePermissions = await getEffectivePermissionsForUser(
-          user?.id,
-          user?.roleId
-        );
+        const effectivePermissions = await (
+          await import("../../services/permissions/getPermissionsById")
+        ).getPermissionsByUserId(user?.id);
 
         // Return only minimal required user information to avoid leaking sensitive/internal fields
         const safeUser = {
@@ -56,10 +45,8 @@ export async function meRoute(server: FastifyInstance) {
             ? {
                 id: user.roleDetails.id,
                 name: user.roleDetails.name,
-                permissions: rolePermissions,
               }
             : null,
-          userPermissions,
           permissions: effectivePermissions,
         };
 

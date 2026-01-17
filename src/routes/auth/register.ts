@@ -52,19 +52,7 @@ export async function registerRoute(server: FastifyInstance) {
           },
         });
 
-        // Compute permissions and generate tokens (include permissions in access token)
-        const rolePermissions = user.roleId
-          ? await (
-              await import("../../lib/authorization")
-            ).getPermissionsForRole(user.roleId)
-          : [];
-        const { allowed, denied } = await (
-          await import("../../lib/authorization")
-        ).getUserPermissionMappings(user.id);
-        const userPermissions = [
-          ...allowed.map((n: string) => ({ name: n, isAllowed: true })),
-          ...denied.map((n: string) => ({ name: n, isAllowed: false })),
-        ];
+        // Compute effective permissions only
         const permissions = await (
           await import("../../lib/authorization")
         ).getEffectivePermissionsForUser(user.id, user.roleId);
@@ -76,8 +64,6 @@ export async function registerRoute(server: FastifyInstance) {
             username: user.username,
             roleId: user.roleId,
             permissions,
-            rolePermissions,
-            userPermissions,
           },
           { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );

@@ -57,7 +57,6 @@ export const updateRole: RouteHandlerMethod = async (request, reply) => {
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
-        ...(permissions !== undefined && { permissions }),
         ...(isActive !== undefined && { isActive }),
       },
     });
@@ -105,7 +104,30 @@ export const updateRole: RouteHandlerMethod = async (request, reply) => {
       invalidateRolePermissions(id);
     }
 
-    return sendSuccess(reply, updatedRole, "Role updated successfully");
+    // Reload role with permissions to return consistent shape
+    const updated = await prisma.role.findUnique({
+      where: { id },
+      include: {
+        rolePermissions: {
+          include: { permission: { select: { name: true } } },
+        },
+      },
+    });
+
+    const mapped = {
+      id: updated!.id,
+      name: updated!.name,
+      description: updated!.description,
+      isActive: updated!.isActive,
+      isProtected: updated!.isProtected,
+      createdAt: updated!.createdAt,
+      updatedAt: updated!.updatedAt,
+      permissions: (updated!.rolePermissions || []).map(
+        (rp: any) => rp.permission.name
+      ),
+    };
+
+    return sendSuccess(reply, mapped, "Role updated successfully");
   } catch (error) {
     console.error("Error updating role:", error);
     return sendError(reply, "Failed to update role");

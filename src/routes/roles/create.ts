@@ -59,7 +59,30 @@ export const createRole: RouteHandlerMethod = async (request, reply) => {
       invalidateRolePermissions(role.id);
     }
 
-    return sendSuccess(reply, role, "Role created successfully", 201);
+    // Reload role with permissions to return a consistent shape
+    const created = await prisma.role.findUnique({
+      where: { id: role.id },
+      include: {
+        rolePermissions: {
+          include: { permission: { select: { name: true } } },
+        },
+      },
+    });
+
+    const mapped = {
+      id: created!.id,
+      name: created!.name,
+      description: created!.description,
+      isActive: created!.isActive,
+      isProtected: created!.isProtected,
+      createdAt: created!.createdAt,
+      updatedAt: created!.updatedAt,
+      permissions: (created!.rolePermissions || []).map(
+        (rp: any) => rp.permission.name
+      ),
+    };
+
+    return sendSuccess(reply, mapped, "Role created successfully", 201);
   } catch (error) {
     console.error("Error creating role:", error);
     return sendError(reply, "Failed to create role");

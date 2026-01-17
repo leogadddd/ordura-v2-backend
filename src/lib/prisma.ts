@@ -17,8 +17,9 @@ export const prisma = new PrismaClient({
 });
 
 // Prevent deletion of protected roles at application level (if Prisma middleware is supported)
-if (typeof prisma.$use === "function") {
-  prisma.$use(async (params, next) => {
+const pAny = prisma as any;
+if (typeof pAny.$use === "function") {
+  pAny.$use(async (params: any, next: any) => {
     // Only act on Role delete operations
     if (
       params.model === "Role" &&

@@ -41,16 +41,6 @@ export async function refreshRoute(server: FastifyInstance) {
           session.user.id,
           session.user.roleId
         );
-        const rolePermissions = session.user.roleId
-          ? await getPermissionsForRole(session.user.roleId)
-          : [];
-        const { allowed, denied } = await getUserPermissionMappings(
-          session.user.id
-        );
-        const userPermissions = [
-          ...allowed.map((n) => ({ name: n, isAllowed: true })),
-          ...denied.map((n) => ({ name: n, isAllowed: false })),
-        ];
 
         // Generate new access token
         const accessToken = server.jwt.sign(
@@ -60,8 +50,6 @@ export async function refreshRoute(server: FastifyInstance) {
             username: session.user.username,
             roleId: session.user.roleId,
             permissions,
-            rolePermissions,
-            userPermissions,
           },
           { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );

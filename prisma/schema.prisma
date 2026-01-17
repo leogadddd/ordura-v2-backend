@@ -115,7 +115,7 @@ model UserPermission {
   userId       String
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
   permissionId String
-  isAllowed    Boolean    @default(true)
+  isAllowed    Boolean    @default(true) // true = allow, false = deny
   createdAt    DateTime   @default(now())
 
   @@unique([userId, permissionId])
