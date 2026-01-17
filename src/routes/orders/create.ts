@@ -1,5 +1,6 @@
 import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
+import { generateOrderNumber } from "../../util/id-generation";
 import { sendSuccess, sendError } from "../../lib/response";
 
 interface CreateOrderBody {
@@ -47,17 +48,8 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
       );
     }
 
-    // Generate order number (e.g., ORD-20260108-001)
+    // Base date string used for order number (e.g., ORD-20260108-001)
     const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
-    const count = await prisma.order.count({
-      where: {
-        createdAt: {
-          gte: new Date(new Date().toDateString()),
-          lt: new Date(new Date().toDateString() + " 23:59:59"),
-        },
-      },
-    });
-    const orderNumber = `ORD-${date}-${String(count + 1).padStart(3, "0")}`;
 
     // Calculate totals from items
     const itemsData = body.items.map((item, index) => ({
@@ -78,56 +70,81 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
 
     const changeDue = body.amountReceived - body.grandTotal;
 
-    // Create order with items and payment
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        type: "SALE",
-        status: "COMPLETED",
-        taxMode: "EXCLUSIVE",
-        currency: "USD",
-        customerName: body.customerName || null,
-        customerPhone: body.customerPhone || null,
-        customerEmail: body.customerEmail || null,
-        subtotal: body.subtotal,
-        discountTotal: body.discountTotal || 0,
-        taxTotal: body.taxTotal || 0,
-        grandTotal: body.grandTotal,
-        paidTotal: body.amountReceived,
-        changeDue,
-        dueAmount: 0, // Fully paid
-        notes: body.notes || null,
-        employeeId: userId,
-        closedAt: new Date(),
-        items: {
-          createMany: {
-            data: itemsData,
-          },
-        },
-        payments: {
-          create: {
-            method: body.paymentMethod as any,
-            status: "PAID",
-            amount: body.amountReceived,
+    // Use the simple util to generate a per-day order number atomically.
+    // Keep a small retry in case of unlikely P2002 (defensive), but generation
+    // is atomic via `order_counters` so collisions should not happen.
+    const createMaxAttempts = 3;
+    let order: any = null;
+    for (let attempt = 1; attempt <= createMaxAttempts; attempt++) {
+      const orderNumber = await generateOrderNumber();
+      console.debug(
+        `Attempt ${attempt}: creating order with orderNumber=${orderNumber}`
+      );
+
+      try {
+        order = await prisma.order.create({
+          data: {
+            orderNumber,
+            type: "SALE",
+            status: "COMPLETED",
+            taxMode: "EXCLUSIVE",
             currency: "USD",
-            receivedAt: new Date(),
+            customerName: body.customerName || null,
+            customerPhone: body.customerPhone || null,
+            customerEmail: body.customerEmail || null,
+            subtotal: body.subtotal,
+            discountTotal: body.discountTotal || 0,
+            taxTotal: body.taxTotal || 0,
+            grandTotal: body.grandTotal,
+            paidTotal: body.amountReceived,
+            changeDue,
+            dueAmount: 0, // Fully paid
+            notes: body.notes || null,
+            employeeId: userId,
+            closedAt: new Date(),
+            items: {
+              createMany: {
+                data: itemsData,
+              },
+            },
+            payments: {
+              create: {
+                method: body.paymentMethod as any,
+                status: "PAID",
+                amount: body.amountReceived,
+                currency: "USD",
+                receivedAt: new Date(),
+              },
+            },
           },
-        },
-      },
-      include: {
-        employee: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            firstName: true,
-            lastName: true,
+          include: {
+            employee: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            items: true,
+            payments: true,
           },
-        },
-        items: true,
-        payments: true,
-      },
-    });
+        });
+
+        break; // success
+      } catch (err: any) {
+        if (err?.code === "P2002" && err?.meta?.modelName === "Order") {
+          console.warn(
+            `Order create attempt ${attempt} failed with P2002 for orderNumber=${orderNumber}, retrying...`
+          );
+          if (attempt === createMaxAttempts) throw err;
+          await new Promise((res) => setTimeout(res, 30 * attempt));
+          continue;
+        }
+        throw err;
+      }
+    }
 
     return sendSuccess(reply, order, "Order created successfully", 201);
   } catch (error: any) {
