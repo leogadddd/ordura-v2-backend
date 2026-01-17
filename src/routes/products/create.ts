@@ -1,6 +1,6 @@
 import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
-import { generateSKU, generateId } from "../../lib/utils";
+import { generateSKU, generateId } from "../../util/id-generation";
 import {
   sendSuccess,
   sendValidationError,

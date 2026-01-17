@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import { generateId, generateSKU } from "../lib/utils";
+import { generateId, generateSKU } from "../util/id-generation";
 
 const sampleProducts = [
   {
