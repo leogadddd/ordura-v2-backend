@@ -1,11 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { comparePassword } from "../../lib/auth";
-import {
-  getEffectivePermissionsForUser,
-  getPermissionsForRole,
-  getUserPermissionMappings,
-} from "../../lib/authorization";
+import { generateAuthTokens } from "../../lib/tokens";
 import { sendSuccess, sendUnauthorized, sendError } from "../../lib/response";
 
 interface LoginBody {
@@ -47,35 +43,8 @@ export async function loginRoute(server: FastifyInstance) {
           return sendUnauthorized(reply, "Invalid credentials");
         }
 
-        // Compute effective permissions from role + per-user overrides
-        const permissions = await getEffectivePermissionsForUser(
-          user.id,
-          user.roleId
-        );
-
-        // Compute effective permissions from role + per-user overrides (single array)
-
-        // Generate tokens
-        const accessToken = server.jwt.sign(
-          {
-            sub: user.id,
-            email: user.email,
-            username: user.username,
-            roleId: user.roleId,
-            permissions,
-          },
-          { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
-        );
-
-        const refreshToken = server.jwt.sign(
-          {
-            sub: user.id,
-            email: user.email,
-            username: user.username,
-            roleId: user.roleId,
-          },
-          { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" }
-        );
+        const { accessToken, refreshToken, permissions } =
+          await generateAuthTokens(server, user);
 
         // Store refresh token
         const expiresAt = new Date();

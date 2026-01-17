@@ -77,7 +77,8 @@ export function invalidateRolePermissions(roleId: string) {
   rolePermissionsCache.delete(roleId);
 }
 
-export function requirePermission(permission: string) {
+// allow permission or array of permissions
+export function requirePermission(permission: string | string[]) {
   return async (
     request: FastifyRequest & { user?: any },
     reply: FastifyReply
@@ -88,9 +89,24 @@ export function requirePermission(permission: string) {
     }
     // Prefer permissions attached to user (e.g., from JWT or session). If not
     // present, compute the effective set from role + user overrides.
+    // Prefer permissions attached to user (from JWT/session). These are
+    // generated with `getEffectivePermissionsForUser` at sign time, so trust
+    // them when present. Otherwise compute the effective set from role + overrides.
     let perms: string[] | undefined = user.permissions;
     if (!perms) {
       perms = await getEffectivePermissionsForUser(user.id, user.roleId);
+    }
+
+    if (Array.isArray(permission)) {
+      // If an array is provided, allow if *any* permission in the array
+      // is satisfied (logical OR). This lets callers provide multiple
+      // acceptable permissions (e.g., ['ORDERS:CREATE', 'POS:ORDER']).
+      for (const perm of permission) {
+        if (hasPermission(perms, perm)) {
+          return;
+        }
+      }
+      return reply.code(403).send({ error: "Forbidden" });
     }
 
     if (!hasPermission(perms, permission)) {

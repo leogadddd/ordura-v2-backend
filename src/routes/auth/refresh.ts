@@ -36,23 +36,7 @@ export async function refreshRoute(server: FastifyInstance) {
           return sendUnauthorized(reply, "Refresh token expired or invalid");
         }
 
-        // Compute fresh permissions and include them in the access token
-        const permissions = await getEffectivePermissionsForUser(
-          session.user.id,
-          session.user.roleId
-        );
-
-        // Generate new access token
-        const accessToken = server.jwt.sign(
-          {
-            sub: session.user.id,
-            email: session.user.email,
-            username: session.user.username,
-            roleId: session.user.roleId,
-            permissions,
-          },
-          { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
-        );
+        const { accessToken } = await generateAuthTokens(server, session.user);
 
         // Set new access token in httpOnly cookie
         reply.setCookie("accessToken", accessToken, {

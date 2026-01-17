@@ -11,7 +11,7 @@ export async function orderRoutes(server: FastifyInstance) {
     "/",
     {
       onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ORDERS:view"),
+      preHandler: requirePermission("ORDERS:MANAGE"),
     },
     getOrders
   );
@@ -21,7 +21,7 @@ export async function orderRoutes(server: FastifyInstance) {
     "/",
     {
       onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ORDERS:create"),
+      preHandler: requirePermission(["ORDERS:CREATE", "POS:ORDER"]),
     },
     createOrder
   );
@@ -31,7 +31,7 @@ export async function orderRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ORDERS:view"),
+      preHandler: requirePermission("ORDERS:VIEW"),
     },
     getOrder
   );

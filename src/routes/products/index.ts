@@ -13,7 +13,7 @@ export async function productRoutes(server: FastifyInstance) {
     "/",
     {
       onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:view"),
+      preHandler: requirePermission("PRODUCTS:VIEW"),
     },
     getProducts
   );
@@ -23,7 +23,7 @@ export async function productRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:view"),
+      preHandler: requirePermission("PRODUCTS:VIEW"),
     },
     getProduct
   );
@@ -33,7 +33,7 @@ export async function productRoutes(server: FastifyInstance) {
     "/",
     {
       onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:create"),
+      preHandler: requirePermission("PRODUCTS:CREATE"),
     },
     createProduct
   );
@@ -43,7 +43,7 @@ export async function productRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:edit"),
+      preHandler: requirePermission("PRODUCTS:EDIT"),
     },
     updateProduct
   );

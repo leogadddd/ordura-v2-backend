@@ -52,31 +52,8 @@ export async function registerRoute(server: FastifyInstance) {
           },
         });
 
-        // Compute effective permissions only
-        const permissions = await (
-          await import("../../lib/authorization")
-        ).getEffectivePermissionsForUser(user.id, user.roleId);
-
-        const accessToken = server.jwt.sign(
-          {
-            sub: user.id,
-            email: user.email,
-            username: user.username,
-            roleId: user.roleId,
-            permissions,
-          },
-          { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
-        );
-
-        const refreshToken = server.jwt.sign(
-          {
-            sub: user.id,
-            email: user.email,
-            username: user.username,
-            roleId: user.roleId,
-          },
-          { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" }
-        );
+        const { accessToken, refreshToken, permissions } =
+          await generateAuthTokens(server, user);
 
         // Store refresh token
         const expiresAt = new Date();
