@@ -6,7 +6,7 @@ import {
   getUserPermissionMappings,
   getEffectivePermissionsForUser,
 } from "../../lib/authorization";
-import { authenticateWithCookie } from "../../lib/auth";
+import { requireAuthCookie } from "../../lib/authentication";
 
 const parseDecimal = (value: unknown): number => {
   if (typeof value === "number") return value;
@@ -21,7 +21,7 @@ export async function accountInfoRoute(server: FastifyInstance) {
   server.get(
     "/account-info",
     {
-      onRequest: authenticateWithCookie(server),
+      onRequest: requireAuthCookie(server),
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {

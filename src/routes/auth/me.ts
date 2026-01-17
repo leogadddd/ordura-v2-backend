@@ -6,13 +6,13 @@ import {
   getUserPermissionMappings,
   getEffectivePermissionsForUser,
 } from "../../lib/authorization";
-import { authenticateWithCookie } from "../../lib/auth";
+import { requireAuthCookie } from "../../lib/authentication";
 
 export async function meRoute(server: FastifyInstance) {
   server.get(
     "/me",
     {
-      onRequest: authenticateWithCookie(server),
+      onRequest: requireAuthCookie(server),
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {

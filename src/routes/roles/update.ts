@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma";
 import { getAllPermissions } from "../../lib/permissions";
 import { sendSuccess, sendError } from "../../lib/response";
 import { invalidateRolePermissions } from "../../lib/authorization";
+import { sanitizeInput } from "../../util/sanitize";
 
 interface UpdateRoleBody {
   name?: string;
@@ -15,7 +16,12 @@ export const updateRole: RouteHandlerMethod = async (request, reply) => {
   try {
     const { id } = request.params as { id: string };
     const { name, description, permissions, isActive } =
-      request.body as UpdateRoleBody;
+      sanitizeInput<UpdateRoleBody>(request.body, {
+        allowedFields: ["name", "description", "permissions", "isActive"],
+        trimStrings: true,
+        removeEmpty: true,
+        parseBooleans: ["isActive"],
+      });
 
     // Validate provided permissions
     if (permissions && permissions.length > 0) {

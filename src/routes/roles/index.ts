@@ -4,16 +4,16 @@ import { getRole } from "./get";
 import { createRole } from "./create";
 import { updateRole } from "./update";
 import { deleteRole } from "./delete";
-import { authenticateWithCookie } from "../../lib/auth";
-import { requirePermission } from "../../lib/authorization";
+import { requireAuthCookie } from "../../lib/authentication";
+import { requirePermissions } from "../../lib/authorization";
 
 export async function rolesRoutes(server: FastifyInstance) {
   // GET /api/roles - list
   server.get(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ROLES:view"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("ROLES:view"),
     },
     getRoles
   );
@@ -22,8 +22,8 @@ export async function rolesRoutes(server: FastifyInstance) {
   server.get(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ROLES:view"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("ROLES:view"),
     },
     getRole
   );
@@ -32,8 +32,8 @@ export async function rolesRoutes(server: FastifyInstance) {
   server.post(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ROLES:create"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("ROLES:create"),
     },
     createRole
   );
@@ -42,8 +42,8 @@ export async function rolesRoutes(server: FastifyInstance) {
   server.put(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ROLES:edit"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("ROLES:edit"),
     },
     updateRole
   );
@@ -52,8 +52,8 @@ export async function rolesRoutes(server: FastifyInstance) {
   server.delete(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ROLES:delete"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("ROLES:delete"),
     },
     deleteRole
   );

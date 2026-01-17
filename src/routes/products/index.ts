@@ -4,16 +4,16 @@ import { updateProduct } from "./update";
 import { deleteProduct } from "./delete";
 import { getProducts } from "./list";
 import { getProduct } from "./get";
-import { authenticateWithCookie } from "../../lib/auth";
-import { requirePermission } from "../../lib/authorization";
+import { requireAuthCookie } from "../../lib/authentication";
+import { requirePermissions } from "../../lib/authorization";
 
 export async function productRoutes(server: FastifyInstance) {
   // GET /api/products - List all products
   server.get(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:VIEW"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PRODUCTS:VIEW"),
     },
     getProducts
   );
@@ -22,8 +22,8 @@ export async function productRoutes(server: FastifyInstance) {
   server.get(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:VIEW"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PRODUCTS:VIEW"),
     },
     getProduct
   );
@@ -32,8 +32,8 @@ export async function productRoutes(server: FastifyInstance) {
   server.post(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:CREATE"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PRODUCTS:CREATE"),
     },
     createProduct
   );
@@ -42,8 +42,8 @@ export async function productRoutes(server: FastifyInstance) {
   server.put(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:EDIT"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PRODUCTS:EDIT"),
     },
     updateProduct
   );
@@ -52,8 +52,8 @@ export async function productRoutes(server: FastifyInstance) {
   server.delete(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PRODUCTS:delete"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PRODUCTS:delete"),
     },
     deleteProduct
   );

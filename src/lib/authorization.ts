@@ -78,7 +78,7 @@ export function invalidateRolePermissions(roleId: string) {
 }
 
 // allow permission or array of permissions
-export function requirePermission(permission: string | string[]) {
+export function requirePermissions(permission: string | string[]) {
   return async (
     request: FastifyRequest & { user?: any },
     reply: FastifyReply
@@ -89,9 +89,8 @@ export function requirePermission(permission: string | string[]) {
     }
     // Prefer permissions attached to user (e.g., from JWT or session). If not
     // present, compute the effective set from role + user overrides.
-    // Prefer permissions attached to user (from JWT/session). These are
-    // generated with `getEffectivePermissionsForUser` at sign time, so trust
-    // them when present. Otherwise compute the effective set from role + overrides.
+    // These are generated with `getEffectivePermissionsForUser` at sign time,
+    // so trust them when present. Otherwise compute the effective set.
     let perms: string[] | undefined = user.permissions;
     if (!perms) {
       perms = await getEffectivePermissionsForUser(user.id, user.roleId);
@@ -121,5 +120,5 @@ export default {
   getUserPermissionMappings,
   getEffectivePermissionsForUser,
   invalidateRolePermissions,
-  requirePermission,
+  requirePermissions,
 };

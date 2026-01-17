@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma";
 import { getAllPermissions } from "../../lib/permissions";
 import { sendSuccess, sendError } from "../../lib/response";
 import { invalidateRolePermissions } from "../../lib/authorization";
+import { sanitizeInput } from "../../util/sanitize";
 
 interface CreateRoleBody {
   name: string;
@@ -12,7 +13,14 @@ interface CreateRoleBody {
 
 export const createRole: RouteHandlerMethod = async (request, reply) => {
   try {
-    const { name, description, permissions } = request.body as CreateRoleBody;
+    const { name, description, permissions } = sanitizeInput<CreateRoleBody>(
+      request.body,
+      {
+        allowedFields: ["name", "description", "permissions"],
+        trimStrings: true,
+        removeEmpty: true,
+      }
+    );
 
     // Validate provided permissions
     if (permissions && permissions.length > 0) {

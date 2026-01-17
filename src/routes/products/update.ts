@@ -6,6 +6,7 @@ import {
   sendValidationError,
   sendError,
 } from "../../lib/response";
+import { sanitizeInput } from "../../util/sanitize";
 
 interface UpdateProductBody {
   name?: string;
@@ -27,7 +28,24 @@ interface UpdateProductParams {
 export const updateProduct: RouteHandlerMethod = async (request, reply) => {
   try {
     const { id } = request.params as UpdateProductParams;
-    const updateData = request.body as UpdateProductBody;
+    const updateData = sanitizeInput<UpdateProductBody>(request.body, {
+      allowedFields: [
+        "name",
+        "category",
+        "description",
+        "notes",
+        "cost",
+        "sellingPrice",
+        "status",
+        "isDraft",
+        "requiresFulfillment",
+        "fulfillmentTypeId",
+      ],
+      trimStrings: true,
+      removeEmpty: true,
+      parseNumbers: ["cost", "sellingPrice"],
+      parseBooleans: ["isDraft", "requiresFulfillment"],
+    });
 
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({

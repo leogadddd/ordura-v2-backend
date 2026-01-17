@@ -8,15 +8,15 @@ import {
   deleteManyPermissions,
 } from "../../services/permissions";
 import { sendError, sendSuccess, sendNotFound } from "../../lib/response";
-import { authenticateWithCookie } from "../../lib/auth";
-import { requirePermission } from "../../lib/authorization";
+import { requireAuthCookie } from "../../lib/authentication";
+import { requirePermissions } from "../../lib/authorization";
 
 export async function permissionsRoutes(server: FastifyInstance) {
   server.get(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PERMISSIONS:view"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PERMISSIONS:view"),
     },
     async (request, reply) => {
       try {
@@ -32,8 +32,8 @@ export async function permissionsRoutes(server: FastifyInstance) {
   server.get(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PERMISSIONS:view"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PERMISSIONS:view"),
     },
     async (request, reply) => {
       try {
@@ -51,8 +51,8 @@ export async function permissionsRoutes(server: FastifyInstance) {
   server.post(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PERMISSIONS:create"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PERMISSIONS:create"),
     },
     async (request, reply) => {
       try {
@@ -74,8 +74,8 @@ export async function permissionsRoutes(server: FastifyInstance) {
   server.post(
     "/many",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PERMISSIONS:create"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PERMISSIONS:create"),
     },
     async (request, reply) => {
       try {
@@ -97,8 +97,8 @@ export async function permissionsRoutes(server: FastifyInstance) {
   server.put(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PERMISSIONS:edit"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PERMISSIONS:edit"),
     },
     async (request, reply) => {
       try {
@@ -118,8 +118,8 @@ export async function permissionsRoutes(server: FastifyInstance) {
   server.post(
     "/delete-many",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("PERMISSIONS:delete"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("PERMISSIONS:delete"),
     },
     async (request, reply) => {
       try {

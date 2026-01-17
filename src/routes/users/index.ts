@@ -4,16 +4,16 @@ import { getUser } from "./get";
 import { createUser } from "./create";
 import { updateUser } from "./update";
 import { deleteUser } from "./delete";
-import { authenticateWithCookie } from "../../lib/auth";
-import { requirePermission } from "../../lib/authorization";
+import { requireAuthCookie } from "../../lib/authentication";
+import { requirePermissions } from "../../lib/authorization";
 
 export async function userRoutes(server: FastifyInstance) {
   // GET /api/users - list
   server.get(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("USERS:view"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("USERS:view"),
     },
     getUsers
   );
@@ -22,8 +22,8 @@ export async function userRoutes(server: FastifyInstance) {
   server.get(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("USERS:view"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("USERS:view"),
     },
     getUser
   );
@@ -32,8 +32,8 @@ export async function userRoutes(server: FastifyInstance) {
   server.post(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("USERS:create"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("USERS:create"),
     },
     createUser
   );
@@ -42,8 +42,8 @@ export async function userRoutes(server: FastifyInstance) {
   server.put(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("USERS:edit"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("USERS:edit"),
     },
     updateUser
   );
@@ -52,8 +52,8 @@ export async function userRoutes(server: FastifyInstance) {
   server.delete(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("USERS:delete"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("USERS:delete"),
     },
     deleteUser
   );
@@ -62,8 +62,8 @@ export async function userRoutes(server: FastifyInstance) {
   server.post(
     "/:id/password",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("USERS:edit"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("USERS:edit"),
     },
     require("./change-password").changePassword
   );

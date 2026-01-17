@@ -6,6 +6,7 @@ import {
   sendValidationError,
   sendError,
 } from "../../lib/response";
+import { sanitizeInput } from "../../util/sanitize";
 
 interface CreateProductBody {
   name: string;
@@ -31,7 +32,23 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
       isDraft = false,
       requiresFulfillment = false,
       fulfillmentTypeId,
-    } = request.body as CreateProductBody;
+    } = sanitizeInput<CreateProductBody>(request.body, {
+      allowedFields: [
+        "name",
+        "category",
+        "description",
+        "notes",
+        "cost",
+        "sellingPrice",
+        "isDraft",
+        "requiresFulfillment",
+        "fulfillmentTypeId",
+      ],
+      trimStrings: true,
+      removeEmpty: true,
+      parseNumbers: ["cost", "sellingPrice"],
+      parseBooleans: ["isDraft", "requiresFulfillment"],
+    });
 
     // Validate required fields
     if (

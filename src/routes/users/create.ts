@@ -1,6 +1,7 @@
 import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
-import { hashPassword } from "../../lib/auth";
+import { hashPassword } from "../../lib/authentication";
+import { sanitizeInput } from "../../util/sanitize";
 import {
   sendSuccess,
   sendConflict,
@@ -28,7 +29,20 @@ export const createUser: RouteHandlerMethod = async (request, reply) => {
       lastName,
       roleId,
       isActive = true,
-    } = request.body as CreateUserBody;
+    } = sanitizeInput<CreateUserBody>(request.body, {
+      allowedFields: [
+        "email",
+        "username",
+        "password",
+        "firstName",
+        "lastName",
+        "roleId",
+        "isActive",
+      ],
+      trimStrings: true,
+      removeEmpty: true,
+      parseBooleans: ["isActive"],
+    });
 
     if (!email || !username) {
       return sendValidationError(reply, {

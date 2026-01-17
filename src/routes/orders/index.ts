@@ -2,16 +2,16 @@ import { FastifyInstance } from "fastify";
 import { getOrders } from "./list";
 import { getOrder } from "./get";
 import { createOrder } from "./create";
-import { authenticateWithCookie } from "../../lib/auth";
-import { requirePermission } from "../../lib/authorization";
+import { requireAuthCookie } from "../../lib/authentication";
+import { requirePermissions } from "../../lib/authorization";
 
 export async function orderRoutes(server: FastifyInstance) {
   // GET /api/orders - List all orders with filters
   server.get(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ORDERS:MANAGE"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("ORDERS:MANAGE"),
     },
     getOrders
   );
@@ -20,8 +20,8 @@ export async function orderRoutes(server: FastifyInstance) {
   server.post(
     "/",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission(["ORDERS:CREATE", "POS:ORDER"]),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions(["ORDERS:CREATE", "POS:ORDER"]),
     },
     createOrder
   );
@@ -30,8 +30,8 @@ export async function orderRoutes(server: FastifyInstance) {
   server.get(
     "/:id",
     {
-      onRequest: authenticateWithCookie(server),
-      preHandler: requirePermission("ORDERS:VIEW"),
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("ORDERS:VIEW"),
     },
     getOrder
   );

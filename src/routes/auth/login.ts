@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
-import { comparePassword } from "../../lib/auth";
+import { comparePassword } from "../../lib/authentication";
 import { generateAuthTokens } from "../../lib/tokens";
+import { sanitizeInput } from "../../util/sanitize";
 import { sendSuccess, sendUnauthorized, sendError } from "../../lib/response";
 
 interface LoginBody {
@@ -18,7 +19,11 @@ export async function loginRoute(server: FastifyInstance) {
       request: FastifyRequest<{ Body: LoginBody }>,
       reply: FastifyReply
     ) => {
-      const { email, password } = request.body;
+      const { email, password } = sanitizeInput<LoginBody>(request.body, {
+        allowedFields: ["email", "password"],
+        trimStrings: true,
+        removeEmpty: true,
+      });
 
       let user: any;
       try {

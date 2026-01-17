@@ -7,6 +7,7 @@ import {
   sendError,
   sendValidationError,
 } from "../../lib/response";
+import { sanitizeInput } from "../../util/sanitize";
 
 interface UpdateUserParams {
   id: string;
@@ -26,7 +27,20 @@ interface UpdateUserBody {
 export const updateUser: RouteHandlerMethod = async (request, reply) => {
   try {
     const { id } = request.params as UpdateUserParams;
-    const body = request.body as UpdateUserBody;
+    const body = sanitizeInput<UpdateUserBody>(request.body, {
+      allowedFields: [
+        "email",
+        "username",
+        "firstName",
+        "lastName",
+        "roleId",
+        "isActive",
+        "permissions",
+      ],
+      trimStrings: true,
+      removeEmpty: true,
+      parseBooleans: ["isActive"],
+    });
 
     const existing = await prisma.commonUser.findUnique({ where: { id } });
     if (!existing) return sendNotFound(reply, "User not found");

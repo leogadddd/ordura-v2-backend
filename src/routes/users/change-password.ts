@@ -1,12 +1,13 @@
 import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
-import { hashPassword } from "../../lib/auth";
+import { hashPassword } from "../../lib/authentication";
 import {
   sendSuccess,
   sendNotFound,
   sendValidationError,
   sendError,
 } from "../../lib/response";
+import { sanitizeInput } from "../../util/sanitize";
 
 interface ChangePasswordParams {
   id: string;
@@ -19,7 +20,11 @@ interface ChangePasswordBody {
 export const changePassword: RouteHandlerMethod = async (request, reply) => {
   try {
     const { id } = request.params as ChangePasswordParams;
-    const { newPassword } = request.body as ChangePasswordBody;
+    const { newPassword } = sanitizeInput<ChangePasswordBody>(request.body, {
+      allowedFields: ["newPassword"],
+      trimStrings: true,
+      removeEmpty: true,
+    });
 
     if (!newPassword || newPassword.length < 6) {
       return sendValidationError(reply, {

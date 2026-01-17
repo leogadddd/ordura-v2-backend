@@ -1,13 +1,21 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendError } from "../../lib/response";
+import { sanitizeInput } from "../../util/sanitize";
 
 export async function logoutRoute(server: FastifyInstance) {
   server.post(
     "/logout",
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const refreshToken = request.cookies.refreshToken;
+        const { refreshToken } = sanitizeInput<{ refreshToken?: string }>(
+          request.cookies,
+          {
+            allowedFields: ["refreshToken"],
+            trimStrings: true,
+            removeEmpty: true,
+          }
+        );
 
         if (refreshToken) {
           try {

@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
-import { hashPassword } from "../../lib/auth";
+import { hashPassword } from "../../lib/authentication";
+import { generateAuthTokens } from "../../lib/tokens";
+import { sanitizeInput } from "../../util/sanitize";
 import { sendSuccess, sendConflict, sendError } from "../../lib/response";
 
 interface RegisterBody {
@@ -22,7 +24,18 @@ export async function registerRoute(server: FastifyInstance) {
       reply: FastifyReply
     ) => {
       const { email, username, password, firstName, lastName, roleId } =
-        request.body;
+        sanitizeInput<RegisterBody>(request.body, {
+          allowedFields: [
+            "email",
+            "username",
+            "password",
+            "firstName",
+            "lastName",
+            "roleId",
+          ],
+          trimStrings: true,
+          removeEmpty: true,
+        });
 
       try {
         // Check if user exists

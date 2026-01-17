@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import { hashPassword } from "../lib/auth";
+import { hashPassword } from "../lib/authentication";
 
 export async function seedUsers() {
   console.log("🌱 Seeding users...");

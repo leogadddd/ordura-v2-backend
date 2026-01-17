@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendUnauthorized, sendError } from "../../lib/response";
+import { generateAuthTokens } from "../../lib/tokens";
+import { sanitizeInput } from "../../util/sanitize";
 import {
   getEffectivePermissionsForUser,
   getPermissionsForRole,
@@ -12,7 +14,14 @@ export async function refreshRoute(server: FastifyInstance) {
     "/refresh",
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const refreshToken = request.cookies.refreshToken;
+        const { refreshToken } = sanitizeInput<{ refreshToken?: string }>(
+          request.cookies,
+          {
+            allowedFields: ["refreshToken"],
+            trimStrings: true,
+            removeEmpty: true,
+          }
+        );
 
         if (!refreshToken) {
           return sendUnauthorized(reply, "No refresh token provided");
