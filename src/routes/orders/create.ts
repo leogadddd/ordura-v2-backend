@@ -88,7 +88,7 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
             type: "SALE",
             status: "COMPLETED",
             taxMode: "EXCLUSIVE",
-            currency: "USD",
+            currency: "PHP",
             customerName: body.customerName || null,
             customerPhone: body.customerPhone || null,
             customerEmail: body.customerEmail || null,
