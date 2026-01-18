@@ -44,8 +44,8 @@ export async function accountInfoRoute(server: FastifyInstance) {
           return sendError(reply, "User not found", 404);
         }
 
-        // Fetch user's orders for analytics
-        const orders = await prisma.order.findMany({
+        // Fetch user's sales transactions for analytics (new model)
+        const orders = await prisma.salesTransaction.findMany({
           where: { employeeId: sub },
           select: {
             id: true,

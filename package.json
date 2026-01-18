@@ -19,6 +19,10 @@
     "print:permissions": "tsx src/lib/permissions.ts",
     "seed:permissions": "tsx src/scripts/seed-permissions.ts",
     "migrate:role-permissions": "tsx src/scripts/migrate-role-permissions.ts",
+    "migrate:orders-to-sales": "tsx src/scripts/migrate-orders-to-sales.ts",
+    "verify:migration": "tsx src/scripts/verify-orders-to-sales.ts",
+    "test:create-order": "tsx src/scripts/test-create-order.ts",
+    "test:get-sales": "tsx src/scripts/test-get-sales.ts",
     "test:auth": "tsx src/lib/authorization.test.ts",
     "seed:users": "tsx src/scripts/seed-users.ts"
   },

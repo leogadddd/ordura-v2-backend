@@ -132,6 +132,77 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
           },
         });
 
+        // Also create a SalesTransaction record for the new order to support the
+        // new domain model. We keep the legacy Order row for compatibility.
+        try {
+          await prisma.salesTransaction.create({
+            data: {
+              id: order.id,
+              transactionNumber: order.orderNumber,
+              type: order.type as any,
+              status: order.status as any,
+              taxMode: order.taxMode as any,
+              currency: order.currency,
+              customerName: order.customerName || null,
+              customerPhone: order.customerPhone || null,
+              customerEmail: order.customerEmail || null,
+              subtotal: order.subtotal as any,
+              orderDiscount: order.orderDiscount as any,
+              discountTotal: order.discountTotal as any,
+              serviceFee: order.serviceFee as any,
+              deliveryFee: order.deliveryFee as any,
+              taxTotal: order.taxTotal as any,
+              grandTotal: order.grandTotal as any,
+              paidTotal: order.paidTotal as any,
+              changeDue: order.changeDue as any,
+              dueAmount: order.dueAmount as any,
+              notes: order.notes || null,
+              employeeId: order.employeeId,
+              createdAt: order.createdAt,
+              closedAt: order.closedAt,
+              items: {
+                createMany: {
+                  data: order.items.map((it: any) => ({
+                    id: it.id,
+                    lineNo: it.lineNo,
+                    productId: it.productId,
+                    sku: it.sku,
+                    name: it.name,
+                    category: it.category,
+                    unitPrice: it.unitPrice,
+                    unitCost: it.unitCost,
+                    quantity: it.quantity,
+                    discount: it.discount,
+                    taxRate: it.taxRate,
+                    taxAmount: it.taxAmount,
+                    lineTotal: it.lineTotal,
+                    notes: it.notes,
+                    createdAt: it.createdAt,
+                  })),
+                },
+              },
+            },
+          });
+
+          // Link existing payments and fulfillments to the new SalesTransaction
+          await prisma.payment.updateMany({
+            where: { orderId: order.id },
+            data: { salesTransactionId: order.id },
+          });
+          await prisma.fulfillment.updateMany({
+            where: { orderId: order.id },
+            data: { salesTransactionId: order.id },
+          });
+        } catch (e) {
+          // Don't fail the entire order create flow if the SalesTransaction write fails;
+          // log and proceed — we'll have a migration/retry path.
+          console.error(
+            "Failed to create SalesTransaction for order",
+            order.id,
+            e
+          );
+        }
+
         break; // success
       } catch (err: any) {
         if (err?.code === "P2002" && err?.meta?.modelName === "Order") {

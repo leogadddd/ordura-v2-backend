@@ -6,6 +6,7 @@ import cookie from "@fastify/cookie";
 import { authRoutes } from "./routes/auth";
 import { productRoutes } from "./routes/products";
 import { orderRoutes } from "./routes/orders";
+import { salesTransactionRoutes } from "./routes/transactions/sales";
 import { optionsRoutes } from "./routes/options";
 import { rolesRoutes } from "./routes/roles";
 import { userRoutes } from "./routes/users";
@@ -44,6 +45,7 @@ server.get("/health", async () => {
 server.register(authRoutes, { prefix: "/api/auth" });
 server.register(productRoutes, { prefix: "/api/products" });
 server.register(orderRoutes, { prefix: "/api/orders" });
+server.register(salesTransactionRoutes, { prefix: "/api/transactions/sales" });
 server.register(optionsRoutes, { prefix: "/api/options" });
 server.register(rolesRoutes, { prefix: "/api/roles" });
 server.register(userRoutes, { prefix: "/api/users" });

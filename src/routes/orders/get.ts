@@ -41,6 +41,11 @@ export const getOrder: RouteHandlerMethod = async (request, reply) => {
       return sendNotFound(reply, "Order not found");
     }
 
+    const salesTransaction = await prisma.salesTransaction.findUnique({
+      where: { id },
+      select: { id: true, transactionNumber: true, createdAt: true },
+    });
+
     // Convert Decimal fields to numbers
     const orderWithNumbers = {
       ...order,
@@ -68,6 +73,7 @@ export const getOrder: RouteHandlerMethod = async (request, reply) => {
         ...payment,
         amount: Number(payment.amount),
       })),
+      salesTransaction: salesTransaction || null,
       // Attach employee role permissions (normalized)
       employee: {
         ...(order.employee ?? {}),
