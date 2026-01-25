@@ -194,6 +194,7 @@ enum TaxMode {
 }
 
 enum PaymentMethod {
+  NONE
   CASH
   CARD
   MOBILE
@@ -202,6 +203,7 @@ enum PaymentMethod {
 }
 
 enum PaymentStatus {
+  NO_PAYMENT_NEEDED
   PENDING
   PAID
   VOID

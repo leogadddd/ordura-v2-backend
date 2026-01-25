@@ -18,8 +18,11 @@ interface CreateOrderBody {
     taxRate?: number;
   }[];
   subtotal: number;
+  orderDiscount?: number;
   discountTotal?: number;
   taxTotal?: number;
+  serviceFee?: number;
+  deliveryFee?: number;
   grandTotal: number;
   paymentMethod: string;
   amountReceived: number;
@@ -40,16 +43,28 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
       return sendError(reply, "Order must contain at least one item", 400);
     }
 
-    if (body.amountReceived < body.grandTotal) {
+    // Recalculate totals; if payment method is NONE, do not apply tax
+    const subtotal = body.subtotal;
+    const orderDiscount = (body as any).orderDiscount || 0;
+    const serviceFee = body.serviceFee || 0;
+    const deliveryFee = body.deliveryFee || 0;
+
+    const discountedSubtotal = subtotal - orderDiscount;
+
+    const isNoPayment = (body.paymentMethod || "").toUpperCase() === "NONE" || (body.grandTotal <= 0);
+
+    // Tax should be computed on subtotal after discounts plus applicable fees
+    const taxableBase = Math.max(0, discountedSubtotal + serviceFee + deliveryFee);
+    const computedTaxTotal = isNoPayment ? 0 : (body.taxTotal ?? taxableBase * 0.12);
+    const computedGrandTotal = taxableBase + computedTaxTotal;
+
+    if (!isNoPayment && body.amountReceived < computedGrandTotal) {
       return sendError(
         reply,
         "Amount received is less than the grand total",
         400
       );
     }
-
-    // Base date string used for order number (e.g., ORD-20260108-001)
-    const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
 
     // Calculate totals from items
     const itemsData = body.items.map((item, index) => ({
@@ -68,8 +83,13 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
       lineTotal: item.unitPrice * item.quantity - (item.discount || 0),
     }));
 
-    const changeDue = body.amountReceived - body.grandTotal;
+    const changeDue = isNoPayment ? 0 : (body.amountReceived - computedGrandTotal);
 
+    // Determine payment status
+    const paymentStatus = isNoPayment ? "NO_PAYMENT_NEEDED" : body.amountReceived >= computedGrandTotal ? "PAID" : "PENDING";
+
+    // Base date string used for order number (e.g., ORD-20260108-001)
+    const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
     // Use the simple util to generate a per-day order number atomically.
     // Keep a small retry in case of unlikely P2002 (defensive), but generation
     // is atomic via `order_counters` so collisions should not happen.
@@ -92,13 +112,16 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
             customerName: body.customerName || null,
             customerPhone: body.customerPhone || null,
             customerEmail: body.customerEmail || null,
-            subtotal: body.subtotal,
+            subtotal: subtotal,
+            orderDiscount: orderDiscount,
             discountTotal: body.discountTotal || 0,
-            taxTotal: body.taxTotal || 0,
-            grandTotal: body.grandTotal,
-            paidTotal: body.amountReceived,
+            serviceFee: serviceFee,
+            deliveryFee: deliveryFee,
+            taxTotal: computedTaxTotal,
+            grandTotal: computedGrandTotal,
+            paidTotal: isNoPayment ? 0 : body.amountReceived,
             changeDue,
-            dueAmount: 0, // Fully paid
+            dueAmount: Math.max(0, computedGrandTotal - (isNoPayment ? 0 : body.amountReceived)),
             notes: body.notes || null,
             employeeId: userId,
             closedAt: new Date(),
@@ -110,8 +133,8 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
             payments: {
               create: {
                 method: body.paymentMethod as any,
-                status: "PAID",
-                amount: body.amountReceived,
+                status: paymentStatus as any,
+                amount: isNoPayment ? 0 : body.amountReceived,
                 currency: "USD",
                 receivedAt: new Date(),
               },
