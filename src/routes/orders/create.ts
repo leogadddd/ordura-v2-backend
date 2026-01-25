@@ -51,18 +51,25 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
 
     const discountedSubtotal = subtotal - orderDiscount;
 
-    const isNoPayment = (body.paymentMethod || "").toUpperCase() === "NONE" || (body.grandTotal <= 0);
+    const isNoPayment =
+      (body.paymentMethod || "").toUpperCase() === "NONE" ||
+      body.grandTotal <= 0;
 
     // Tax should be computed on subtotal after discounts plus applicable fees
-    const taxableBase = Math.max(0, discountedSubtotal + serviceFee + deliveryFee);
-    const computedTaxTotal = isNoPayment ? 0 : (body.taxTotal ?? taxableBase * 0.12);
+    const taxableBase = Math.max(
+      0,
+      discountedSubtotal + serviceFee + deliveryFee,
+    );
+    const computedTaxTotal = isNoPayment
+      ? 0
+      : (body.taxTotal ?? taxableBase * 0.12);
     const computedGrandTotal = taxableBase + computedTaxTotal;
 
     if (!isNoPayment && body.amountReceived < computedGrandTotal) {
       return sendError(
         reply,
         "Amount received is less than the grand total",
-        400
+        400,
       );
     }
 
@@ -83,10 +90,16 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
       lineTotal: item.unitPrice * item.quantity - (item.discount || 0),
     }));
 
-    const changeDue = isNoPayment ? 0 : (body.amountReceived - computedGrandTotal);
+    const changeDue = isNoPayment
+      ? 0
+      : body.amountReceived - computedGrandTotal;
 
     // Determine payment status
-    const paymentStatus = isNoPayment ? "NO_PAYMENT_NEEDED" : body.amountReceived >= computedGrandTotal ? "PAID" : "PENDING";
+    const paymentStatus = isNoPayment
+      ? "NO_PAYMENT_NEEDED"
+      : body.amountReceived >= computedGrandTotal
+        ? "PAID"
+        : "PENDING";
 
     // Base date string used for order number (e.g., ORD-20260108-001)
     const date = new Date().toISOString().split("T")[0].replace(/-/g, "");
@@ -98,7 +111,7 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
     for (let attempt = 1; attempt <= createMaxAttempts; attempt++) {
       const orderNumber = await generateOrderNumber();
       console.debug(
-        `Attempt ${attempt}: creating order with orderNumber=${orderNumber}`
+        `Attempt ${attempt}: creating order with orderNumber=${orderNumber}`,
       );
 
       try {
@@ -121,7 +134,10 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
             grandTotal: computedGrandTotal,
             paidTotal: isNoPayment ? 0 : body.amountReceived,
             changeDue,
-            dueAmount: Math.max(0, computedGrandTotal - (isNoPayment ? 0 : body.amountReceived)),
+            dueAmount: Math.max(
+              0,
+              computedGrandTotal - (isNoPayment ? 0 : body.amountReceived),
+            ),
             notes: body.notes || null,
             employeeId: userId,
             closedAt: new Date(),
@@ -222,7 +238,7 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
           console.error(
             "Failed to create SalesTransaction for order",
             order.id,
-            e
+            e,
           );
         }
 
@@ -230,7 +246,7 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
       } catch (err: any) {
         if (err?.code === "P2002" && err?.meta?.modelName === "Order") {
           console.warn(
-            `Order create attempt ${attempt} failed with P2002 for orderNumber=${orderNumber}, retrying...`
+            `Order create attempt ${attempt} failed with P2002 for orderNumber=${orderNumber}, retrying...`,
           );
           if (attempt === createMaxAttempts) throw err;
           await new Promise((res) => setTimeout(res, 30 * attempt));
