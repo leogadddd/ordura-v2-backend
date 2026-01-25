@@ -18,6 +18,7 @@
     "seed:roles": "tsx src/scripts/seed-roles.ts",
     "print:permissions": "tsx src/lib/permissions.ts",
     "seed:permissions": "tsx src/scripts/seed-permissions.ts",
+    "cleanup:wildcard-permissions": "tsx src/scripts/remove-wildcard-permissions.ts",
     "migrate:role-permissions": "tsx src/scripts/migrate-role-permissions.ts",
     "migrate:orders-to-sales": "tsx src/scripts/migrate-orders-to-sales.ts",
     "verify:migration": "tsx src/scripts/verify-orders-to-sales.ts",

@@ -5,6 +5,7 @@ export const PERMISSIONS = {
   ROLES: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
   PRODUCTS: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
   ORDERS: ["VIEW", "CREATE", "EDIT", "MANAGE"] as const,
+  TRANSACTIONS: ["VIEW"] as const,
   REPORTS: ["VIEW"] as const,
   SETTINGS: ["VIEW", "MANAGE"] as const,
 } as const;
@@ -40,20 +41,13 @@ export function getAllPermissions(): string[] {
     Object.keys(PERMISSIONS) as Array<keyof PermissionsMap>
   ).flatMap((feature) =>
     (PERMISSIONS[feature] as readonly string[]).map(
-      (action) => `${feature}:${action}`
-    )
+      (action) => `${feature}:${action}`,
+    ),
   );
 
-  // Add resource wildcards like `PRODUCTS:*`
-  const resourceWildcards = RESOURCE_WILDCARD_FEATURES.map((f) => `${f}:*`);
-
-  // Add action wildcards like `*:manage`
-  const actionWildcards = (ACTION_WILDCARDS as readonly string[]).map(
-    (a) => `*:${a}`
-  );
-
-  // Include a global wildcard '*' as well
-  return [...base, ...resourceWildcards, ...actionWildcards, "*"];
+  // Only return concrete permissions (no wildcards). The UI will select
+  // and send concrete permissions when a module/global "all" is used.
+  return base;
 }
 
 export default PERMISSIONS;

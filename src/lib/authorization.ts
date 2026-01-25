@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "./prisma";
+import { sendForbidden } from "./response";
 
 // Simple in-memory cache for role -> permissions mapping. Later we can replace
 // this with Redis or an LRU cache if needed.
@@ -7,7 +8,7 @@ const rolePermissionsCache = new Map<string, string[]>();
 
 export function hasPermission(
   userPermissions: string[] | undefined,
-  required: string
+  required: string,
 ): boolean {
   if (!userPermissions || userPermissions.length === 0) return false;
   if (userPermissions.includes("*")) return true;
@@ -21,7 +22,7 @@ export function hasPermission(
 
   // Simple suffix wildcard match - e.g. 'ORDERS:*' should match 'ORDERS:read:123'
   return userPermissions.some(
-    (p) => p.endsWith("*") && required.startsWith(p.slice(0, -1))
+    (p) => p.endsWith("*") && required.startsWith(p.slice(0, -1)),
   );
 }
 
@@ -60,7 +61,7 @@ export async function getUserPermissionMappings(userId: string) {
  */
 export async function getEffectivePermissionsForUser(
   userId: string,
-  roleId?: string
+  roleId?: string,
 ): Promise<string[]> {
   const base = roleId ? await getPermissionsForRole(roleId) : [];
   const { allowed, denied } = await getUserPermissionMappings(userId);
@@ -81,19 +82,30 @@ export function invalidateRolePermissions(roleId: string) {
 export function requirePermissions(permission: string | string[]) {
   return async (
     request: FastifyRequest & { user?: any },
-    reply: FastifyReply
+    reply: FastifyReply,
   ) => {
     const user = request.user;
     if (!user) {
       return reply.code(401).send({ error: "Unauthorized" });
     }
-    // Prefer permissions attached to user (e.g., from JWT or session). If not
-    // present, compute the effective set from role + user overrides.
-    // These are generated with `getEffectivePermissionsForUser` at sign time,
-    // so trust them when present. Otherwise compute the effective set.
-    let perms: string[] | undefined = user.permissions;
-    if (!perms) {
-      perms = await getEffectivePermissionsForUser(user.id, user.roleId);
+    // Prefer permissions attached to user (e.g., from JWT or session).
+    // If not present or it's an empty array, compute the effective set from
+    // role + user overrides so that updates are respected immediately.
+    let perms: string[] | undefined;
+    if (Array.isArray(user.permissions) && user.permissions.length > 0) {
+      perms = user.permissions;
+    } else {
+      const userId = user.id ?? user.sub;
+      perms = await getEffectivePermissionsForUser(userId, user.roleId);
+    }
+
+    try {
+      console.debug(
+        "requirePermissions: computed perms length=",
+        Array.isArray(perms) ? perms.length : typeof perms,
+      );
+    } catch (e) {
+      /* ignore */
     }
 
     if (Array.isArray(permission)) {
@@ -105,11 +117,11 @@ export function requirePermissions(permission: string | string[]) {
           return;
         }
       }
-      return reply.code(403).send({ error: "Forbidden" });
+      return sendForbidden(reply);
     }
 
     if (!hasPermission(perms, permission)) {
-      return reply.code(403).send({ error: "Forbidden" });
+      return sendForbidden(reply);
     }
   };
 }

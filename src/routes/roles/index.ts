@@ -13,19 +13,20 @@ export async function rolesRoutes(server: FastifyInstance) {
     "/",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("ROLES:view"),
+      preHandler: requirePermissions("ROLES:VIEW"),
     },
-    getRoles
+    getRoles,
   );
 
   // GET /api/roles/:id - get one
+  // Allow either ROLES:VIEW or ROLES:MANAGE to access a single role
   server.get(
     "/:id",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("ROLES:view"),
+      preHandler: requirePermissions("ROLES:VIEW"),
     },
-    getRole
+    getRole,
   );
 
   // POST /api/roles - create
@@ -33,9 +34,9 @@ export async function rolesRoutes(server: FastifyInstance) {
     "/",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("ROLES:create"),
+      preHandler: requirePermissions("ROLES:CREATE"),
     },
-    createRole
+    createRole,
   );
 
   // PUT /api/roles/:id - update
@@ -43,9 +44,9 @@ export async function rolesRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("ROLES:edit"),
+      preHandler: requirePermissions("ROLES:EDIT"),
     },
-    updateRole
+    updateRole,
   );
 
   // DELETE /api/roles/:id - deactivate
@@ -53,9 +54,9 @@ export async function rolesRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("ROLES:delete"),
+      preHandler: requirePermissions("ROLES:DELETE"),
     },
-    deleteRole
+    deleteRole,
   );
 }
 

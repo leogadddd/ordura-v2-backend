@@ -13,9 +13,9 @@ export async function userRoutes(server: FastifyInstance) {
     "/",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("USERS:view"),
+      preHandler: requirePermissions("USERS:VIEW"),
     },
-    getUsers
+    getUsers,
   );
 
   // GET /api/users/:id - get one
@@ -23,9 +23,9 @@ export async function userRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("USERS:view"),
+      preHandler: requirePermissions("USERS:VIEW"),
     },
-    getUser
+    getUser,
   );
 
   // POST /api/users - create
@@ -33,9 +33,9 @@ export async function userRoutes(server: FastifyInstance) {
     "/",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("USERS:create"),
+      preHandler: requirePermissions("USERS:CREATE"),
     },
-    createUser
+    createUser,
   );
 
   // PUT /api/users/:id - update
@@ -43,9 +43,9 @@ export async function userRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("USERS:edit"),
+      preHandler: requirePermissions("USERS:UPDATE"),
     },
-    updateUser
+    updateUser,
   );
 
   // DELETE /api/users/:id - deactivate
@@ -53,9 +53,9 @@ export async function userRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("USERS:delete"),
+      preHandler: requirePermissions("USERS:DELETE"),
     },
-    deleteUser
+    deleteUser,
   );
 
   // POST /api/users/:id/password - change password
@@ -63,8 +63,8 @@ export async function userRoutes(server: FastifyInstance) {
     "/:id/password",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("USERS:edit"),
+      preHandler: requirePermissions("USERS:UPDATE"),
     },
-    require("./change-password").changePassword
+    require("./change-password").changePassword,
   );
 }

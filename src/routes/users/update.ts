@@ -20,8 +20,8 @@ interface UpdateUserBody {
   lastName?: string;
   roleId?: string;
   isActive?: boolean;
-  // Optional per-user permission overrides
-  permissions?: { name: string; isAllowed: boolean }[];
+  // Optional per-user permission overrides. isAllowed === null means remove override
+  permissions?: { name: string; isAllowed: boolean | null }[];
 }
 
 export const updateUser: RouteHandlerMethod = async (request, reply) => {
@@ -124,21 +124,26 @@ export const updateUser: RouteHandlerMethod = async (request, reply) => {
 
       const permissionIdByName = new Map(perms.map((p) => [p.name, p.id]));
 
-      // Delete any existing mappings for the provided permissions, then insert the new ones
+      // Delete any existing mappings for the provided permissions
       const permissionIds = perms.map((p) => p.id);
       await prisma.$transaction([
         (prisma as any).userPermission.deleteMany({
           where: { userId: id, permissionId: { in: permissionIds } },
         }),
-        (prisma as any).userPermission.createMany({
-          data: incoming.map((p) => ({
+      ]);
+
+      // Recreate only those entries where isAllowed is explicitly boolean
+      const toCreate = incoming.filter((p) => typeof p.isAllowed === "boolean");
+      if (toCreate.length > 0) {
+        await (prisma as any).userPermission.createMany({
+          data: toCreate.map((p) => ({
             userId: id,
             permissionId: permissionIdByName.get(p.name)!,
             isAllowed: p.isAllowed,
           })),
           skipDuplicates: true,
-        }),
-      ]);
+        });
+      }
     }
 
     return sendSuccess(reply, { user: updated }, "User updated successfully");

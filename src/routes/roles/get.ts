@@ -18,11 +18,6 @@ export const getRole: RouteHandlerMethod = async (request, reply) => {
       return sendError(reply, "Role not found", 404);
     }
 
-    // Prevent modifying/deleting a protected role
-    if (role.isProtected || role.name === "Administrator") {
-      return sendError(reply, "Cannot delete protected role", 403);
-    }
-
     const mapped = {
       id: role.id,
       name: role.name,
@@ -32,7 +27,7 @@ export const getRole: RouteHandlerMethod = async (request, reply) => {
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
       permissions: (role.rolePermissions || []).map(
-        (rp: any) => rp.permission.name
+        (rp: any) => rp.permission.name,
       ),
     };
 
