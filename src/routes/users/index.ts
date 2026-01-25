@@ -43,7 +43,7 @@ export async function userRoutes(server: FastifyInstance) {
     "/:id",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("USERS:UPDATE"),
+      preHandler: requirePermissions("USERS:EDIT"),
     },
     updateUser,
   );
