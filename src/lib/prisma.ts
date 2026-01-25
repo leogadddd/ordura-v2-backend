@@ -13,7 +13,8 @@ const adapter = new PrismaPg(pool);
 
 export const prisma = new PrismaClient({
   adapter,
-  log: ["query", "info", "warn", "error"],
+  // Disable query logging to avoid printing SQL statements and parameters (may include IDs)
+  log: ["info", "warn", "error"],
 });
 
 // Prevent deletion of protected roles at application level (if Prisma middleware is supported)

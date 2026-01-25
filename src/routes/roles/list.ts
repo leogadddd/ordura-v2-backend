@@ -25,11 +25,16 @@ export const getRoles: RouteHandlerMethod = async (request, reply) => {
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
       permissions: (r.rolePermissions || []).map(
-        (rp: any) => rp.permission.name
+        (rp: any) => rp.permission.name,
       ),
     }));
 
-    return sendSuccess(reply, mapped, "Roles retrieved successfully");
+    // Return a standard list response with `items` (keeps consistency with other list endpoints)
+    return sendSuccess(
+      reply,
+      { items: mapped },
+      "Roles retrieved successfully",
+    );
   } catch (error) {
     console.error("Error fetching roles:", error);
     return sendError(reply, "Failed to fetch roles");
