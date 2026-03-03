@@ -1,11 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendError } from "../../lib/response";
-import {
-  getPermissionsForRole,
-  getUserPermissionMappings,
-  getEffectivePermissionsForUser,
-} from "../../lib/authorization";
 import { requireAuthCookie } from "../../lib/authentication";
 
 const parseDecimal = (value: unknown): number => {
@@ -27,10 +22,19 @@ export async function accountInfoRoute(server: FastifyInstance) {
       try {
         const { sub } = request.user as any;
 
-        // Fetch user details
+        // Fetch user details (safe/select only)
         const user = await prisma.commonUser.findUnique({
           where: { id: sub },
-          include: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true,
+            lastLogin: true,
             roleDetails: {
               select: {
                 id: true,
@@ -44,9 +48,10 @@ export async function accountInfoRoute(server: FastifyInstance) {
           return sendError(reply, "User not found", 404);
         }
 
-        // Fetch user's sales transactions for analytics (new model)
+        // Fetch user's sales transactions for analytics
         const orders = await prisma.salesTransaction.findMany({
           where: { employeeId: sub },
+          orderBy: { createdAt: "desc" },
           select: {
             id: true,
             status: true,
@@ -63,7 +68,7 @@ export async function accountInfoRoute(server: FastifyInstance) {
         // Calculate statistics
         const totalOrders = orders.length;
         const completedOrders = orders.filter(
-          (o) => o.status === "COMPLETED"
+          (o) => o.status === "COMPLETED",
         ).length;
 
         // Calculate total revenue (sum of grandTotal for completed orders)
@@ -99,30 +104,38 @@ export async function accountInfoRoute(server: FastifyInstance) {
           lastLoginDate: user.lastLogin?.toISOString(),
         };
 
-        const rolePermissions = user?.roleId
-          ? await getPermissionsForRole(user.roleId)
-          : [];
-        const { allowed, denied } = await getUserPermissionMappings(user.id);
-        const userPermissions = [
-          ...allowed.map((n) => ({ name: n, isAllowed: true })),
-          ...denied.map((n) => ({ name: n, isAllowed: false })),
-        ];
-        const effectivePermissions = await getEffectivePermissionsForUser(
-          user.id,
-          user.roleId
-        );
+        const recentSales = orders.slice(0, 5).map((o) => {
+          const itemsQuantity = o.items.reduce((sum, item) => {
+            const qty = parseDecimal(item.quantity);
+            return sum + qty;
+          }, 0);
+
+          return {
+            id: o.id,
+            status: o.status,
+            createdAt: o.createdAt.toISOString(),
+            grandTotal: Math.round(parseDecimal(o.grandTotal) * 100) / 100,
+            itemsQuantity: Math.round(itemsQuantity),
+          };
+        });
 
         const response = {
-          user: {
-            ...user,
-            roleDetails: {
-              ...(user?.roleDetails ?? {}),
-              permissions: rolePermissions,
-            },
-            userPermissions,
-            permissions: effectivePermissions,
+          profile: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            isActive: user.isActive,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+            lastLogin: user.lastLogin?.toISOString(),
+            role: user.roleDetails
+              ? { id: user.roleDetails.id, name: user.roleDetails.name }
+              : null,
           },
           stats,
+          recentSales,
         };
 
         return sendSuccess(reply, response, "Account information retrieved");
@@ -132,6 +145,6 @@ export async function accountInfoRoute(server: FastifyInstance) {
         });
         return sendError(reply, "Internal server error", 500);
       }
-    }
+    },
   );
 }
