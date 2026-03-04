@@ -2,7 +2,7 @@ import { prisma } from "../lib/prisma";
 import { getAllPermissions } from "../lib/permissions";
 
 export async function seedRoles() {
-  console.log("🌱 Seeding roles...");
+  console.log("🌱 Seeding roles and inventory defaults...");
 
   // If no permissions exist in DB, seed all concrete permissions first.
   const existingPermCount = await prisma.permission.count();
@@ -31,6 +31,12 @@ export async function seedRoles() {
       permissions: ["*"],
       isProtected: true,
     },
+    // {
+    //   name: "Inventory Manager",
+    //   description: "Manage stock levels and locations",
+    //   permissions: ["INVENTORY:VIEW", "INVENTORY:ADJUST", "INVENTORY:MANAGE"],
+    //   isProtected: false,
+    // },
   ];
 
   function expandPermissions(desired: string[] = []) {
@@ -125,6 +131,17 @@ export async function seedRoles() {
 
   console.log("🌱 Role seeding finished.");
   console.log("🎉 Roles seeding completed!");
+
+  // Ensure there is at least one default location for inventory
+  try {
+    const count = await prisma.location.count();
+    if (count === 0) {
+      await prisma.location.create({ data: { name: "Main", address: null } });
+      console.log("✅ Created default inventory location 'Main'");
+    }
+  } catch (err) {
+    console.error("Failed to seed default location", err);
+  }
 }
 
 // If this script is run directly (as a CLI), run the seeder

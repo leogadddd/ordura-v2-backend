@@ -2,11 +2,13 @@ import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { generateOrderNumber } from "../../util/id-generation";
 import { sendSuccess, sendError } from "../../lib/response";
+import { decrementStockForOrder } from "../../services/inventory";
 
 interface CreateOrderBody {
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
+  locationId?: string; // inventory location for stock decrement
   items: {
     productId?: string;
     sku?: string;
@@ -240,6 +242,23 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
             order.id,
             e,
           );
+        }
+
+        // after the order is created successfully, decrement inventory if location provided
+        if (body.locationId) {
+          try {
+            await decrementStockForOrder(
+              body.items.map((it) => ({
+                productId: it.productId,
+                quantity: it.quantity,
+              })),
+              body.locationId,
+              userId,
+            );
+          } catch (invErr) {
+            console.error("Inventory decrement failed", invErr);
+            // non-blocking: continue, order has been created
+          }
         }
 
         break; // success

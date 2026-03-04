@@ -60,6 +60,29 @@ export const getProducts: RouteHandlerMethod = async (request, reply) => {
       prisma.product.count({ where }),
     ]);
 
+    // Fetch stock totals for the retrieved products
+    const productIds = products.map((p) => p.id);
+    // groupBy returns a weird typed array; cast to any to satisfy TS
+    let stockTotals: any[] = [];
+    if (productIds.length > 0) {
+      stockTotals = await prisma.stock.groupBy({
+        by: ["productId"],
+        where: { productId: { in: productIds } },
+        _sum: { quantity: true },
+      }) as any;
+    }
+
+    const stockMap = new Map<string, number>();
+    stockTotals.forEach((st) => {
+      stockMap.set(st.productId, st._sum.quantity || 0);
+    });
+
+    // attach to products
+    const productsWithStock = products.map((p) => ({
+      ...p,
+      stockQuantity: stockMap.get(p.id) || 0,
+    }));
+
     return sendSuccess(
       reply,
       {
@@ -71,7 +94,7 @@ export const getProducts: RouteHandlerMethod = async (request, reply) => {
           totalPages: Math.ceil(total / limitNum),
         },
       },
-      "Products retrieved successfully"
+      "Products retrieved successfully",
     );
   } catch (error: any) {
     console.error("List products error:", error, {

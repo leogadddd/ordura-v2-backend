@@ -13,7 +13,7 @@ import { userRoutes } from "./routes/users";
 import { permissionsRoutes } from "./routes/permissions";
 import { seedRoles } from "./scripts/seed-roles";
 // import { posRoutes } from "./routes/pos";
-// import { inventoryRoutes } from "./routes/inventory";
+import { inventoryRoutes } from "./routes/inventory";
 // import { reportsRoutes } from "./routes/reports";
 // import { syncRoutes } from "./routes/sync";
 
@@ -51,7 +51,7 @@ server.register(rolesRoutes, { prefix: "/api/roles" });
 server.register(userRoutes, { prefix: "/api/users" });
 server.register(permissionsRoutes, { prefix: "/api/permissions" });
 // server.register(posRoutes, { prefix: "/api/pos" });
-// server.register(inventoryRoutes, { prefix: "/api/inventory" });
+server.register(inventoryRoutes, { prefix: "/api/inventory" });
 // server.register(reportsRoutes, { prefix: "/api/reports" });
 // server.register(syncRoutes, { prefix: "/api/sync" });
 

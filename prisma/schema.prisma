@@ -37,6 +37,7 @@ model CommonUser {
   orders          Order[] // Orders created/handled by this employee
   transactions    SalesTransaction[] // Sales transactions handled by this employee
   userPermissions UserPermission[]
+  inventoryAdjustments InventoryAdjustment[]
 
   @@index([email])
   @@index([username])
@@ -129,6 +130,54 @@ model UserPermission {
 // Product Management
 // ============================================
 
+// ------------------------
+// Inventory
+// ------------------------
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stocks    Stock[]
+
+  @@index([name])
+}
+
+model Stock {
+  id         String   @id @default(cuid())
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId String
+  quantity   Int      @default(0)
+
+  adjustments InventoryAdjustment[]
+
+  @@unique([productId, locationId])
+  @@index([productId])
+  @@index([locationId])
+}
+
+model InventoryAdjustment {
+  id          String     @id @default(cuid())
+  stock       Stock      @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  stockId     String
+  quantity    Int        // positive=add, negative=remove
+  reason      String
+  createdBy   CommonUser @relation(fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime   @default(now())
+
+  @@index([stockId])
+  @@index([createdById])
+}
+
+// ============================================
+// Product Management
+// ============================================
+
 model Product {
   id          String  @id
   sku         String  @unique // Auto-generated SKU
@@ -149,6 +198,9 @@ model Product {
   requiresFulfillment Boolean          @default(false) // whether this product needs assembly/cooking/etc
   fulfillmentTypeId   String?
   fulfillmentType     FulfillmentType? @relation(fields: [fulfillmentTypeId], references: [id])
+
+  // Inventory relation
+  stocks Stock[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

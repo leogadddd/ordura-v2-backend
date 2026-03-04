@@ -8,6 +8,7 @@ export const PERMISSIONS = {
   TRANSACTIONS: ["VIEW"] as const,
   REPORTS: ["VIEW"] as const,
   SETTINGS: ["VIEW", "MANAGE"] as const,
+  INVENTORY: ["VIEW", "ADJUST", "MANAGE"] as const,
 } as const;
 
 // Resource wildcard entries to generate e.g. `PRODUCTS:*`
