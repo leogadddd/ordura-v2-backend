@@ -61,10 +61,9 @@ export const adjustStock: RouteHandlerMethod = async (request, reply) => {
     const newQty = stock.quantity + quantity;
     if (newQty < 0) {
       // Validation errors must be a map field -> string[]; provide message separately
-      return sendValidationError(
-        reply,
-        { quantity: ["Resulting quantity cannot be negative"] },
-      );
+      return sendValidationError(reply, {
+        quantity: ["Resulting quantity cannot be negative"],
+      });
     }
 
     // perform adjustment in transaction
@@ -75,7 +74,8 @@ export const adjustStock: RouteHandlerMethod = async (request, reply) => {
           quantity,
           reason,
           // user object may be string or any; cast to any to access id
-          createdById: ((request.user as any)?.id || (request.user as any)?.sub || ""),
+          createdById:
+            (request.user as any)?.id || (request.user as any)?.sub || "",
         },
       });
 

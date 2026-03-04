@@ -65,11 +65,11 @@ export const getProducts: RouteHandlerMethod = async (request, reply) => {
     // groupBy returns a weird typed array; cast to any to satisfy TS
     let stockTotals: any[] = [];
     if (productIds.length > 0) {
-      stockTotals = await prisma.stock.groupBy({
+      stockTotals = (await prisma.stock.groupBy({
         by: ["productId"],
         where: { productId: { in: productIds } },
         _sum: { quantity: true },
-      }) as any;
+      })) as any;
     }
 
     const stockMap = new Map<string, number>();
