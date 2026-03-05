@@ -13,6 +13,7 @@ interface UpdateProductBody {
   category?: string;
   description?: string;
   notes?: string;
+  reorderPoint?: number | null;
   cost?: number;
   sellingPrice?: number;
   status?: "ACTIVE" | "INACTIVE" | "OUT_OF_STOCK";
@@ -34,6 +35,7 @@ export const updateProduct: RouteHandlerMethod = async (request, reply) => {
         "category",
         "description",
         "notes",
+        "reorderPoint",
         "cost",
         "sellingPrice",
         "status",
@@ -43,7 +45,7 @@ export const updateProduct: RouteHandlerMethod = async (request, reply) => {
       ],
       trimStrings: true,
       removeEmpty: true,
-      parseNumbers: ["cost", "sellingPrice"],
+      parseNumbers: ["reorderPoint", "cost", "sellingPrice"],
       parseBooleans: ["isDraft", "requiresFulfillment"],
     });
 
@@ -63,6 +65,16 @@ export const updateProduct: RouteHandlerMethod = async (request, reply) => {
     ) {
       return sendValidationError(reply, {
         price: ["Cost and selling price must be positive numbers"],
+      });
+    }
+
+    if (
+      updateData.reorderPoint !== undefined &&
+      updateData.reorderPoint !== null &&
+      updateData.reorderPoint < 0
+    ) {
+      return sendValidationError(reply, {
+        reorderPoint: ["Reorder point must be a non-negative number"],
       });
     }
 

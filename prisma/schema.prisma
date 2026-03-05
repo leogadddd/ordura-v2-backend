@@ -186,6 +186,9 @@ model Product {
   description String?
   notes       String?
 
+  // Inventory thresholds
+  reorderPoint Int?
+
   // Pricing
   cost         Float // Cost price
   sellingPrice Float // Selling price

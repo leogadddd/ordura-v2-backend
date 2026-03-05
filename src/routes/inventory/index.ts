@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { listStocks } from "./list";
 import { getStock } from "./get";
 import { adjustStock } from "./adjust";
+import { getInventorySummary } from "./summary";
 import {
   createLocation,
   listLocations,
@@ -38,6 +39,15 @@ export async function inventoryRoutes(server: FastifyInstance) {
       preHandler: requirePermissions("INVENTORY:ADJUST"),
     },
     adjustStock,
+  );
+
+  server.get(
+    "/summary",
+    {
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("INVENTORY:VIEW"),
+    },
+    getInventorySummary,
   );
 
   // locations

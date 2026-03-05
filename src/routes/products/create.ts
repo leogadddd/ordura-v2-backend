@@ -13,6 +13,7 @@ interface CreateProductBody {
   category: string;
   description?: string;
   notes?: string;
+  reorderPoint?: number;
   cost: number;
   sellingPrice: number;
   isDraft?: boolean;
@@ -27,6 +28,7 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
       category,
       description,
       notes,
+      reorderPoint,
       cost,
       sellingPrice,
       isDraft = false,
@@ -38,6 +40,7 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
         "category",
         "description",
         "notes",
+        "reorderPoint",
         "cost",
         "sellingPrice",
         "isDraft",
@@ -46,7 +49,7 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
       ],
       trimStrings: true,
       removeEmpty: true,
-      parseNumbers: ["cost", "sellingPrice"],
+      parseNumbers: ["reorderPoint", "cost", "sellingPrice"],
       parseBooleans: ["isDraft", "requiresFulfillment"],
     });
 
@@ -66,6 +69,12 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
     if (cost < 0 || sellingPrice < 0) {
       return sendValidationError(reply, {
         price: ["Cost and selling price must be positive numbers"],
+      });
+    }
+
+    if (reorderPoint !== undefined && reorderPoint < 0) {
+      return sendValidationError(reply, {
+        reorderPoint: ["Reorder point must be a non-negative number"],
       });
     }
 
@@ -96,6 +105,7 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
         category,
         description,
         notes,
+        reorderPoint,
         cost,
         sellingPrice,
         status: "ACTIVE",
