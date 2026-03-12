@@ -16,6 +16,7 @@ import { seedRoles } from "./scripts/seed-roles";
 import { inventoryRoutes } from "./routes/inventory";
 // import { reportsRoutes } from "./routes/reports";
 // import { syncRoutes } from "./routes/sync";
+import { supplierRoutes } from "./routes/suppliers";
 
 const server = Fastify({
   logger: {
@@ -54,6 +55,7 @@ server.register(permissionsRoutes, { prefix: "/api/permissions" });
 server.register(inventoryRoutes, { prefix: "/api/inventory" });
 // server.register(reportsRoutes, { prefix: "/api/reports" });
 // server.register(syncRoutes, { prefix: "/api/sync" });
+server.register(supplierRoutes, { prefix: "/api/suppliers" });
 
 // Start server
 const start = async () => {

@@ -3,6 +3,7 @@ import { listStocks } from "./list";
 import { getStock } from "./get";
 import { adjustStock } from "./adjust";
 import { getInventorySummary } from "./summary";
+import { createStock, deleteStock } from "./stocks";
 import {
   createLocation,
   listLocations,
@@ -30,6 +31,24 @@ export async function inventoryRoutes(server: FastifyInstance) {
       preHandler: requirePermissions("INVENTORY:VIEW"),
     },
     getStock,
+  );
+
+  server.post(
+    "/stocks",
+    {
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("INVENTORY:MANAGE"),
+    },
+    createStock,
+  );
+
+  server.delete(
+    "/stocks/:id",
+    {
+      onRequest: requireAuthCookie(server),
+      preHandler: requirePermissions("INVENTORY:MANAGE"),
+    },
+    deleteStock,
   );
 
   server.post(
