@@ -32,15 +32,16 @@ model CommonUser {
   lastLogin DateTime?
 
   // Relations
-  roleDetails     Role?            @relation(fields: [roleId], references: [id])
-  sessions        Session[]
-  orders          Order[] // Orders created/handled by this employee
-  transactions    SalesTransaction[] // Sales transactions handled by this employee
-  userPermissions UserPermission[]
-  inventoryAdjustments InventoryAdjustment[]
+  roleDetails               Role?                      @relation(fields: [roleId], references: [id])
+  sessions                  Session[]
+  orders                    Order[] // Orders created/handled by this employee
+  transactions              SalesTransaction[] // Sales transactions handled by this employee
+  userPermissions           UserPermission[]
+  inventoryAdjustments      InventoryAdjustment[]
   inventoryLevelAdjustments InventoryLevelAdjustment[]
-  purchaseOrders  PurchaseOrder[]
-  purchaseOrderNotes PurchaseOrderNote[]
+  purchaseOrders            PurchaseOrder[]
+  purchaseOrderNotes        PurchaseOrderNote[]
+  customerEvents            CustomerEvent[]
 
   @@index([email])
   @@index([username])
@@ -143,7 +144,7 @@ model Location {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stocks         Stock[]
+  stocks          Stock[]
   inventoryLevels InventoryLevel[]
 
   @@index([name])
@@ -168,7 +169,7 @@ model InventoryAdjustment {
   id          String     @id @default(cuid())
   stock       Stock      @relation(fields: [stockId], references: [id], onDelete: Cascade)
   stockId     String
-  quantity    Int        // positive=add, negative=remove
+  quantity    Int // positive=add, negative=remove
   reason      String
   createdBy   CommonUser @relation(fields: [createdById], references: [id])
   createdById String
@@ -179,20 +180,20 @@ model InventoryAdjustment {
 }
 
 model Supplier {
-  id            String   @id @default(cuid())
-  name          String
-  contactPerson String?
-  email         String?
-  phone         String?
-  address       String?
+  id                   String   @id @default(cuid())
+  name                 String
+  contactPerson        String?
+  email                String?
+  phone                String?
+  address              String?
   deliveryLeadTimeDays Int?
-  notes         String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  notes                String?
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  contacts      SupplierContact[]
-  tags          SupplierTag[]
+  contacts       SupplierContact[]
+  tags           SupplierTag[]
   inventoryItems InventoryItem[]
   purchaseOrders PurchaseOrder[]
 
@@ -252,7 +253,7 @@ model InventoryItem {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  levels          InventoryLevel[]
+  levels             InventoryLevel[]
   purchaseOrderItems PurchaseOrderItem[]
 
   @@index([name])
@@ -270,7 +271,7 @@ model InventoryLevel {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  adjustments     InventoryLevelAdjustment[]
+  adjustments InventoryLevelAdjustment[]
 
   @@unique([inventoryItemId, locationId])
   @@index([inventoryItemId])
@@ -300,21 +301,21 @@ enum PurchaseOrderStatus {
 
 model PurchaseOrder {
   id                 String              @id @default(cuid())
-  supplier            Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  supplierId          String
-  status              PurchaseOrderStatus @default(ORDERED)
-  orderedAt           DateTime            @default(now())
-  expectedDeliveryAt  DateTime?
-  deliveredAt         DateTime?
-  cancelledAt         DateTime?
-  cancelReason        String?
-  createdBy           CommonUser          @relation(fields: [createdById], references: [id])
-  createdById         String
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  supplier           Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  supplierId         String
+  status             PurchaseOrderStatus @default(ORDERED)
+  orderedAt          DateTime            @default(now())
+  expectedDeliveryAt DateTime?
+  deliveredAt        DateTime?
+  cancelledAt        DateTime?
+  cancelReason       String?
+  createdBy          CommonUser          @relation(fields: [createdById], references: [id])
+  createdById        String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
-  items               PurchaseOrderItem[]
-  notes               PurchaseOrderNote[]
+  items PurchaseOrderItem[]
+  notes PurchaseOrderNote[]
 
   @@index([supplierId])
   @@index([status])
@@ -398,6 +399,198 @@ enum ProductStatus {
 // Sales & Orders
 // ============================================
 
+// ============================================
+// Customer Management
+// ============================================
+
+enum CustomerGender {
+  MALE
+  FEMALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+}
+
+enum AllergySeverity {
+  UNKNOWN
+  MILD
+  MODERATE
+  SEVERE
+}
+
+enum CustomerEventType {
+  ORDER_CREATED
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+  PAYMENT_RECEIVED
+  PAYMENT_VOIDED
+  REFUND_ISSUED
+  NOTE
+}
+
+model Customer {
+  id             String  @id @default(cuid())
+  customerNumber String  @unique
+  isActive       Boolean @default(true)
+
+  // Basic information
+  displayName String
+  firstName   String?
+  lastName    String?
+  middleName  String?
+  suffix      String?
+
+  // Personal information
+  gender      CustomerGender?
+  dateOfBirth DateTime?
+  occupation  String?
+  company     String?
+
+  // Contact information
+  email          String?
+  phone          String?
+  alternatePhone String?
+
+  // Address (simple, single address record)
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  emergencyContacts CustomerEmergencyContact[]
+  foodAllergies     CustomerFoodAllergy[]
+  tags              CustomerTag[]
+  metrics           CustomerMetrics?
+  events            CustomerEvent[]
+  orders            Order[]
+  salesTransactions SalesTransaction[]
+
+  @@index([displayName])
+  @@index([email])
+  @@index([phone])
+  @@index([isActive])
+  @@map("Customers")
+}
+
+model CustomerEmergencyContact {
+  id           String   @id @default(cuid())
+  customerId   String
+  name         String
+  relationship String?
+  phone        String?
+  email        String?
+  address      String?
+  notes        String?
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([name])
+  @@index([isPrimary])
+  @@map("CustomerEmergencyContacts")
+}
+
+model CustomerFoodAllergy {
+  id         String          @id @default(cuid())
+  customerId String
+  allergen   String
+  severity   AllergySeverity @default(UNKNOWN)
+  reaction   String?
+  notes      String?
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([allergen])
+  @@index([severity])
+  @@index([isActive])
+  @@map("CustomerFoodAllergies")
+}
+
+model CustomerTag {
+  id         String   @id @default(cuid())
+  customerId String
+  label      String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, label])
+  @@index([customerId])
+  @@index([label])
+  @@map("CustomerTags")
+}
+
+model CustomerMetrics {
+  id         String @id @default(cuid())
+  customerId String @unique
+
+  firstTransactionAt DateTime?
+  lastTransactionAt  DateTime?
+
+  ordersCount            Int @default(0)
+  salesTransactionsCount Int @default(0)
+  cancelledOrdersCount   Int @default(0)
+  refundsCount           Int @default(0)
+
+  lifetimeSpend Decimal @default(0) @db.Decimal(12, 2)
+  avgOrderValue Decimal @default(0) @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([lastTransactionAt])
+  @@map("CustomerMetrics")
+}
+
+model CustomerEvent {
+  id         String            @id @default(cuid())
+  customerId String
+  type       CustomerEventType
+  occurredAt DateTime          @default(now())
+
+  summary String?
+  notes   String?
+
+  // Optional links to source records
+  orderId            String?
+  salesTransactionId String?
+  paymentId          String?
+  createdById        String?
+  metadata           Json?
+
+  createdAt DateTime @default(now())
+
+  customer         Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  order            Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  salesTransaction SalesTransaction? @relation(fields: [salesTransactionId], references: [id], onDelete: SetNull)
+  payment          Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  createdBy        CommonUser?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([customerId, occurredAt])
+  @@index([type])
+  @@index([orderId])
+  @@index([salesTransactionId])
+  @@index([paymentId])
+  @@index([createdById])
+  @@map("CustomerEvents")
+}
+
 // Notes on design:
 // - No hard relations to `Product`; we snapshot product info on each `OrderItem`
 //   so historical orders remain correct even if the product changes later.
@@ -471,6 +664,8 @@ model Order {
   taxMode     TaxMode     @default(EXCLUSIVE)
   currency    String      @default("PHP")
 
+  customerId String?
+
   // Customer snapshot (optional)
   customerName  String?
   customerPhone String?
@@ -494,25 +689,30 @@ model Order {
   closedAt   DateTime?
 
   // Relations
-  employee     CommonUser    @relation(fields: [employeeId], references: [id])
-  items        OrderItem[]
-  payments     Payment[]
-  fulfillments Fulfillment[]
+  employee       CommonUser      @relation(fields: [employeeId], references: [id])
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerEvents CustomerEvent[]
+  items          OrderItem[]
+  payments       Payment[]
+  fulfillments   Fulfillment[]
 
   // Indexes
   @@index([status])
+  @@index([customerId])
   @@index([employeeId])
   @@index([createdAt])
 }
 
 // New model: SalesTransaction - refactor target for Order
 model SalesTransaction {
-  id              String      @id @default(cuid())
-  transactionNumber String    @unique
-  type            OrderType   @default(SALE)
-  status          OrderStatus @default(OPEN)
-  taxMode         TaxMode     @default(EXCLUSIVE)
-  currency        String      @default("PHP")
+  id                String      @id @default(cuid())
+  transactionNumber String      @unique
+  type              OrderType   @default(SALE)
+  status            OrderStatus @default(OPEN)
+  taxMode           TaxMode     @default(EXCLUSIVE)
+  currency          String      @default("PHP")
+
+  customerId String?
 
   // Customer snapshot (optional)
   customerName  String?
@@ -537,20 +737,23 @@ model SalesTransaction {
   closedAt   DateTime?
 
   // Relations
-  employee     CommonUser           @relation(fields: [employeeId], references: [id])
-  items        TransactionItem[]
-  payments     Payment[]
-  fulfillments Fulfillment[]
+  employee       CommonUser        @relation(fields: [employeeId], references: [id])
+  customer       Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerEvents CustomerEvent[]
+  items          TransactionItem[]
+  payments       Payment[]
+  fulfillments   Fulfillment[]
 
   // Indexes
   @@index([status])
+  @@index([customerId])
   @@index([employeeId])
   @@index([createdAt])
   @@map("SalesTransactions")
 }
 
 model TransactionItem {
-  id            String   @id @default(cuid())
+  id            String @id @default(cuid())
   transactionId String
   lineNo        Int
 
@@ -611,21 +814,22 @@ model OrderItem {
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  orderId       String
+  id                 String        @id @default(cuid())
+  orderId            String
   salesTransactionId String?
-  method        PaymentMethod
-  status        PaymentStatus @default(PAID)
-  amount        Decimal       @db.Decimal(12, 2)
-  currency      String        @default("USD")
-  reference     String?
-  externalTxnId String?
-  receivedAt    DateTime      @default(now())
-  metadata      Json?
+  method             PaymentMethod
+  status             PaymentStatus @default(PAID)
+  amount             Decimal       @db.Decimal(12, 2)
+  currency           String        @default("USD")
+  reference          String?
+  externalTxnId      String?
+  receivedAt         DateTime      @default(now())
+  metadata           Json?
 
   // Relations
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
   salesTransaction SalesTransaction? @relation(fields: [salesTransactionId], references: [id], onDelete: Cascade)
+  customerEvents   CustomerEvent[]
 
   // Indexes
   @@index([orderId])
@@ -640,11 +844,11 @@ model Payment {
 // ============================================
 
 model Fulfillment {
-  id                String            @id @default(cuid())
-  orderId           String
+  id                 String            @id @default(cuid())
+  orderId            String
   salesTransactionId String?
-  fulfillmentTypeId String
-  status            FulfillmentStatus @default(PENDING)
+  fulfillmentTypeId  String
+  status             FulfillmentStatus @default(PENDING)
 
   // Assignment & Timing
   assignedTo            String? // employeeId - who's responsible
@@ -658,9 +862,9 @@ model Fulfillment {
   updatedAt DateTime @updatedAt
 
   // Relations
-  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
   salesTransaction SalesTransaction? @relation(fields: [salesTransactionId], references: [id], onDelete: Cascade)
-  fulfillmentType FulfillmentType @relation(fields: [fulfillmentTypeId], references: [id])
+  fulfillmentType  FulfillmentType   @relation(fields: [fulfillmentTypeId], references: [id])
 
   // Indexes
   @@index([orderId])
