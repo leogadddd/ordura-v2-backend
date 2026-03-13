@@ -38,6 +38,9 @@ model CommonUser {
   transactions    SalesTransaction[] // Sales transactions handled by this employee
   userPermissions UserPermission[]
   inventoryAdjustments InventoryAdjustment[]
+  inventoryLevelAdjustments InventoryLevelAdjustment[]
+  purchaseOrders  PurchaseOrder[]
+  purchaseOrderNotes PurchaseOrderNote[]
 
   @@index([email])
   @@index([username])
@@ -140,7 +143,8 @@ model Location {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stocks    Stock[]
+  stocks         Stock[]
+  inventoryLevels InventoryLevel[]
 
   @@index([name])
 }
@@ -181,15 +185,167 @@ model Supplier {
   email         String?
   phone         String?
   address       String?
+  deliveryLeadTimeDays Int?
   notes         String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  contacts      SupplierContact[]
+  tags          SupplierTag[]
+  inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
+
   @@index([name])
   @@index([email])
   @@index([phone])
   @@index([isActive])
+}
+
+model SupplierContact {
+  id         String   @id @default(cuid())
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  name       String
+  role       String?
+  email      String?
+  phone      String?
+  notes      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([supplierId])
+  @@index([name])
+}
+
+model SupplierTag {
+  id         String   @id @default(cuid())
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  label      String
+  createdAt  DateTime @default(now())
+
+  @@unique([supplierId, label])
+  @@index([supplierId])
+  @@index([label])
+}
+
+enum MeasurementUnit {
+  PIECE
+  ML
+  L
+  OZ
+  G
+  KG
+}
+
+model InventoryItem {
+  id              String          @id @default(cuid())
+  name            String
+  description     String?
+  measurementUnit MeasurementUnit @default(PIECE)
+  lowThreshold    Int?
+  shouldAlert     Boolean         @default(true)
+  supplierId      String?
+  supplier        Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  levels          InventoryLevel[]
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@index([name])
+  @@index([supplierId])
+  @@index([shouldAlert])
+}
+
+model InventoryLevel {
+  id              String        @id @default(cuid())
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  location        Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId      String
+  quantity        Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  adjustments     InventoryLevelAdjustment[]
+
+  @@unique([inventoryItemId, locationId])
+  @@index([inventoryItemId])
+  @@index([locationId])
+}
+
+model InventoryLevelAdjustment {
+  id               String         @id @default(cuid())
+  inventoryLevel   InventoryLevel @relation(fields: [inventoryLevelId], references: [id], onDelete: Cascade)
+  inventoryLevelId String
+  quantity         Int
+  reason           String
+  createdBy        CommonUser     @relation(fields: [createdById], references: [id])
+  createdById      String
+  createdAt        DateTime       @default(now())
+
+  @@index([inventoryLevelId])
+  @@index([createdById])
+}
+
+enum PurchaseOrderStatus {
+  ORDERED
+  DELIVERED
+  RESCHEDULED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id                 String              @id @default(cuid())
+  supplier            Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  supplierId          String
+  status              PurchaseOrderStatus @default(ORDERED)
+  orderedAt           DateTime            @default(now())
+  expectedDeliveryAt  DateTime?
+  deliveredAt         DateTime?
+  cancelledAt         DateTime?
+  cancelReason        String?
+  createdBy           CommonUser          @relation(fields: [createdById], references: [id])
+  createdById         String
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  items               PurchaseOrderItem[]
+  notes               PurchaseOrderNote[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderedAt])
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  purchaseOrderId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  inventoryItemId String
+  quantity        Int
+  createdAt       DateTime      @default(now())
+
+  @@unique([purchaseOrderId, inventoryItemId])
+  @@index([purchaseOrderId])
+  @@index([inventoryItemId])
+}
+
+model PurchaseOrderNote {
+  id              String        @id @default(cuid())
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  purchaseOrderId String
+  note            String
+  createdBy       CommonUser    @relation(fields: [createdById], references: [id])
+  createdById     String
+  createdAt       DateTime      @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([createdById])
 }
 
 // ============================================
