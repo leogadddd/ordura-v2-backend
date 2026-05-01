@@ -1,6 +1,7 @@
 import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendError } from "../../lib/response";
+import { productIngredientInclude } from "./ingredients";
 
 interface ListProductsQuery {
   page?: string;
@@ -56,32 +57,10 @@ export const getProducts: RouteHandlerMethod = async (request, reply) => {
         skip,
         take: limitNum,
         orderBy: { createdAt: "desc" },
+        include: productIngredientInclude(),
       }),
       prisma.product.count({ where }),
     ]);
-
-    // Fetch stock totals for the retrieved products
-    const productIds = products.map((p) => p.id);
-    // groupBy returns a weird typed array; cast to any to satisfy TS
-    let stockTotals: any[] = [];
-    if (productIds.length > 0) {
-      stockTotals = (await prisma.stock.groupBy({
-        by: ["productId"],
-        where: { productId: { in: productIds } },
-        _sum: { quantity: true },
-      })) as any;
-    }
-
-    const stockMap = new Map<string, number>();
-    stockTotals.forEach((st) => {
-      stockMap.set(st.productId, st._sum.quantity || 0);
-    });
-
-    // attach to products
-    const productsWithStock = products.map((p) => ({
-      ...p,
-      stockQuantity: stockMap.get(p.id) || 0,
-    }));
 
     return sendSuccess(
       reply,

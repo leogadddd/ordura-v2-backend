@@ -1,14 +1,16 @@
 import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { generateOrderNumber } from "../../util/id-generation";
-import { sendSuccess, sendError } from "../../lib/response";
-import { decrementStockForOrder } from "../../services/inventory";
+import { sendSuccess, sendError, sendValidationError } from "../../lib/response";
+import {
+  consumeIngredientsForOrder,
+  IngredientConsumptionError,
+} from "../../services/ingredient-consumption";
 
 interface CreateOrderBody {
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
-  locationId?: string; // inventory location for stock decrement
   items: {
     productId?: string;
     sku?: string;
@@ -117,60 +119,75 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
       );
 
       try {
-        order = await prisma.order.create({
-          data: {
-            orderNumber,
-            type: "SALE",
-            status: "COMPLETED",
-            taxMode: "EXCLUSIVE",
-            currency: "PHP",
-            customerName: body.customerName || null,
-            customerPhone: body.customerPhone || null,
-            customerEmail: body.customerEmail || null,
-            subtotal: subtotal,
-            orderDiscount: orderDiscount,
-            discountTotal: body.discountTotal || 0,
-            serviceFee: serviceFee,
-            deliveryFee: deliveryFee,
-            taxTotal: computedTaxTotal,
-            grandTotal: computedGrandTotal,
-            paidTotal: isNoPayment ? 0 : body.amountReceived,
-            changeDue,
-            dueAmount: Math.max(
-              0,
-              computedGrandTotal - (isNoPayment ? 0 : body.amountReceived),
-            ),
-            notes: body.notes || null,
-            employeeId: userId,
-            closedAt: new Date(),
-            items: {
-              createMany: {
-                data: itemsData,
+        order = await prisma.$transaction(async (tx) => {
+          const createdOrder = await tx.order.create({
+            data: {
+              orderNumber,
+              type: "SALE",
+              status: "COMPLETED",
+              taxMode: "EXCLUSIVE",
+              currency: "PHP",
+              customerName: body.customerName || null,
+              customerPhone: body.customerPhone || null,
+              customerEmail: body.customerEmail || null,
+              subtotal: subtotal,
+              orderDiscount: orderDiscount,
+              discountTotal: body.discountTotal || 0,
+              serviceFee: serviceFee,
+              deliveryFee: deliveryFee,
+              taxTotal: computedTaxTotal,
+              grandTotal: computedGrandTotal,
+              paidTotal: isNoPayment ? 0 : body.amountReceived,
+              changeDue,
+              dueAmount: Math.max(
+                0,
+                computedGrandTotal - (isNoPayment ? 0 : body.amountReceived),
+              ),
+              notes: body.notes || null,
+              employeeId: userId,
+              closedAt: new Date(),
+              items: {
+                createMany: {
+                  data: itemsData,
+                },
+              },
+              payments: {
+                create: {
+                  method: body.paymentMethod as any,
+                  status: paymentStatus as any,
+                  amount: isNoPayment ? 0 : body.amountReceived,
+                  currency: "USD",
+                  receivedAt: new Date(),
+                },
               },
             },
-            payments: {
-              create: {
-                method: body.paymentMethod as any,
-                status: paymentStatus as any,
-                amount: isNoPayment ? 0 : body.amountReceived,
-                currency: "USD",
-                receivedAt: new Date(),
+            include: {
+              employee: {
+                select: {
+                  id: true,
+                  username: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                },
               },
+              items: true,
+              payments: true,
             },
-          },
-          include: {
-            employee: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-            items: true,
-            payments: true,
-          },
+          });
+
+          await consumeIngredientsForOrder(
+            tx,
+            body.items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              name: item.name,
+            })),
+            userId,
+            `Sale ${createdOrder.orderNumber}`,
+          );
+
+          return createdOrder;
         });
 
         // Also create a SalesTransaction record for the new order to support the
@@ -244,23 +261,6 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
           );
         }
 
-        // after the order is created successfully, decrement inventory if location provided
-        if (body.locationId) {
-          try {
-            await decrementStockForOrder(
-              body.items.map((it) => ({
-                productId: it.productId,
-                quantity: it.quantity,
-              })),
-              body.locationId,
-              userId,
-            );
-          } catch (invErr) {
-            console.error("Inventory decrement failed", invErr);
-            // non-blocking: continue, order has been created
-          }
-        }
-
         break; // success
       } catch (err: any) {
         if (err?.code === "P2002" && err?.meta?.modelName === "Order") {
@@ -277,6 +277,10 @@ export const createOrder: RouteHandlerMethod = async (request, reply) => {
 
     return sendSuccess(reply, order, "Order created successfully", 201);
   } catch (error: any) {
+    if (error instanceof IngredientConsumptionError) {
+      return sendValidationError(reply, error.errors);
+    }
+
     console.error("Create order error:", error, {
       body: request.body,
       user: request.user,

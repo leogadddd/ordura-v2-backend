@@ -17,7 +17,7 @@ import { inventoryRoutes } from "./routes/inventory";
 // import { reportsRoutes } from "./routes/reports";
 // import { syncRoutes } from "./routes/sync";
 import { supplierRoutes } from "./routes/suppliers";
-import { purchaseOrderRoutes } from "./routes/purchaseOrders";
+import { customerRoutes } from "./routes/customers";
 
 const server = Fastify({
   logger: {
@@ -57,7 +57,7 @@ server.register(inventoryRoutes, { prefix: "/api/inventory" });
 // server.register(reportsRoutes, { prefix: "/api/reports" });
 // server.register(syncRoutes, { prefix: "/api/sync" });
 server.register(supplierRoutes, { prefix: "/api/suppliers" });
-server.register(purchaseOrderRoutes, { prefix: "/api/purchase-orders" });
+server.register(customerRoutes, { prefix: "/api/customers" });
 
 // Start server
 const start = async () => {

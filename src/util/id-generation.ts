@@ -81,3 +81,25 @@ export async function generateOrderNumber(dateArg?: Date): Promise<string> {
 
   return `ORD-${date}-${String(seqVal).padStart(3, "0")}`;
 }
+
+/**
+ * Generate a unique customer number.
+ * Format: CUST-YYYYMMDD-RAND
+ */
+export async function generateCustomerNumber(dateArg?: Date): Promise<string> {
+  const date = (dateArg || new Date())
+    .toISOString()
+    .split("T")[0]
+    .replace(/-/g, "");
+
+  const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const customerNumber = `CUST-${date}-${random}`;
+
+  const existing = await prisma.customer.findUnique({
+    where: { customerNumber },
+    select: { id: true },
+  });
+  if (existing) return generateCustomerNumber(dateArg);
+
+  return customerNumber;
+}

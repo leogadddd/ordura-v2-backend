@@ -7,19 +7,24 @@ import {
   sendError,
 } from "../../lib/response";
 import { sanitizeInput } from "../../util/sanitize";
+import {
+  normalizeProductIngredients,
+  productIngredientInclude,
+  validateInventoryItemsExist,
+} from "./ingredients";
 
 interface UpdateProductBody {
   name?: string;
   category?: string;
   description?: string;
   notes?: string;
-  reorderPoint?: number | null;
   cost?: number;
   sellingPrice?: number;
   status?: "ACTIVE" | "INACTIVE" | "OUT_OF_STOCK";
   isDraft?: boolean;
   requiresFulfillment?: boolean;
   fulfillmentTypeId?: string | null;
+  ingredients?: unknown;
 }
 
 interface UpdateProductParams {
@@ -29,23 +34,24 @@ interface UpdateProductParams {
 export const updateProduct: RouteHandlerMethod = async (request, reply) => {
   try {
     const { id } = request.params as UpdateProductParams;
-    const updateData = sanitizeInput<UpdateProductBody>(request.body, {
+    const rawBody = request.body as any;
+    const updateData = sanitizeInput<UpdateProductBody>(rawBody, {
       allowedFields: [
         "name",
         "category",
         "description",
         "notes",
-        "reorderPoint",
         "cost",
         "sellingPrice",
         "status",
         "isDraft",
         "requiresFulfillment",
         "fulfillmentTypeId",
+        "ingredients",
       ],
       trimStrings: true,
       removeEmpty: true,
-      parseNumbers: ["reorderPoint", "cost", "sellingPrice"],
+      parseNumbers: ["cost", "sellingPrice"],
       parseBooleans: ["isDraft", "requiresFulfillment"],
     });
 
@@ -68,25 +74,58 @@ export const updateProduct: RouteHandlerMethod = async (request, reply) => {
       });
     }
 
-    if (
-      updateData.reorderPoint !== undefined &&
-      updateData.reorderPoint !== null &&
-      updateData.reorderPoint < 0
-    ) {
-      return sendValidationError(reply, {
-        reorderPoint: ["Reorder point must be a non-negative number"],
-      });
-    }
-
     // Normalize fulfillment fields
     if (updateData.requiresFulfillment === false) {
       updateData.fulfillmentTypeId = null;
     }
 
+    const shouldUpdateIngredients = rawBody?.ingredients !== undefined;
+    const normalizedIngredients = normalizeProductIngredients(
+      rawBody?.ingredients,
+    );
+    if (shouldUpdateIngredients && normalizedIngredients.errors) {
+      return sendValidationError(reply, normalizedIngredients.errors);
+    }
+
+    if (shouldUpdateIngredients) {
+      const ingredientErrors = await validateInventoryItemsExist(
+        normalizedIngredients.ingredients,
+      );
+      if (ingredientErrors) {
+        return sendValidationError(reply, ingredientErrors);
+      }
+    }
+
+    delete (updateData as any).ingredients;
+
     // Update product
-    const product = await prisma.product.update({
-      where: { id },
-      data: updateData,
+    const product = await prisma.$transaction(async (tx) => {
+      const updated = await tx.product.update({
+        where: { id },
+        data: updateData,
+        include: productIngredientInclude(),
+      });
+
+      if (shouldUpdateIngredients) {
+        await tx.productIngredient.deleteMany({ where: { productId: id } });
+
+        if (normalizedIngredients.ingredients.length > 0) {
+          await tx.productIngredient.createMany({
+            data: normalizedIngredients.ingredients.map((ingredient) => ({
+              productId: id,
+              inventoryItemId: ingredient.inventoryItemId,
+              quantity: ingredient.quantity,
+            })),
+          });
+        }
+
+        return tx.product.findUnique({
+          where: { id },
+          include: productIngredientInclude(),
+        });
+      }
+
+      return updated;
     });
 
     return sendSuccess(reply, product, "Product updated successfully");

@@ -7,49 +7,54 @@ import {
   sendError,
 } from "../../lib/response";
 import { sanitizeInput } from "../../util/sanitize";
+import {
+  normalizeProductIngredients,
+  productIngredientInclude,
+  validateInventoryItemsExist,
+} from "./ingredients";
 
 interface CreateProductBody {
   name: string;
   category: string;
   description?: string;
   notes?: string;
-  reorderPoint?: number;
   cost: number;
   sellingPrice: number;
   isDraft?: boolean;
   requiresFulfillment?: boolean;
   fulfillmentTypeId?: string;
+  ingredients?: unknown;
 }
 
 export const createProduct: RouteHandlerMethod = async (request, reply) => {
   try {
+    const rawBody = request.body as any;
     const {
       name,
       category,
       description,
       notes,
-      reorderPoint,
       cost,
       sellingPrice,
       isDraft = false,
       requiresFulfillment = false,
       fulfillmentTypeId,
-    } = sanitizeInput<CreateProductBody>(request.body, {
+    } = sanitizeInput<CreateProductBody>(rawBody, {
       allowedFields: [
         "name",
         "category",
         "description",
         "notes",
-        "reorderPoint",
         "cost",
         "sellingPrice",
         "isDraft",
         "requiresFulfillment",
         "fulfillmentTypeId",
+        "ingredients",
       ],
       trimStrings: true,
       removeEmpty: true,
-      parseNumbers: ["reorderPoint", "cost", "sellingPrice"],
+      parseNumbers: ["cost", "sellingPrice"],
       parseBooleans: ["isDraft", "requiresFulfillment"],
     });
 
@@ -72,10 +77,18 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
       });
     }
 
-    if (reorderPoint !== undefined && reorderPoint < 0) {
-      return sendValidationError(reply, {
-        reorderPoint: ["Reorder point must be a non-negative number"],
-      });
+    const normalizedIngredients = normalizeProductIngredients(
+      rawBody?.ingredients,
+    );
+    if (normalizedIngredients.errors) {
+      return sendValidationError(reply, normalizedIngredients.errors);
+    }
+
+    const ingredientErrors = await validateInventoryItemsExist(
+      normalizedIngredients.ingredients,
+    );
+    if (ingredientErrors) {
+      return sendValidationError(reply, ingredientErrors);
     }
 
     // Generate unique SKU
@@ -97,22 +110,37 @@ export const createProduct: RouteHandlerMethod = async (request, reply) => {
     const id = generateId("P", nextNumber);
 
     // Create product
-    const product = await prisma.product.create({
-      data: {
-        id,
-        sku,
-        name,
-        category,
-        description,
-        notes,
-        reorderPoint,
-        cost,
-        sellingPrice,
-        status: "ACTIVE",
-        isDraft,
-        requiresFulfillment,
-        fulfillmentTypeId: requiresFulfillment ? fulfillmentTypeId : null,
-      },
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          id,
+          sku,
+          name,
+          category,
+          description,
+          notes,
+          cost,
+          sellingPrice,
+          status: "ACTIVE",
+          isDraft,
+          requiresFulfillment,
+          fulfillmentTypeId: requiresFulfillment ? fulfillmentTypeId : null,
+          ingredients:
+            normalizedIngredients.ingredients.length > 0
+              ? {
+                  create: normalizedIngredients.ingredients.map(
+                    (ingredient) => ({
+                      inventoryItemId: ingredient.inventoryItemId,
+                      quantity: ingredient.quantity,
+                    }),
+                  ),
+                }
+              : undefined,
+        },
+        include: productIngredientInclude(),
+      });
+
+      return created;
     });
 
     return sendSuccess(reply, product, "Product created successfully", 201);

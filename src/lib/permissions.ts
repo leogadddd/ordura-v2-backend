@@ -2,6 +2,7 @@ export const PERMISSIONS = {
   //   DASHBOARD: ["view"] as const,
   POS: ["VIEW", "ORDER"] as const,
   USERS: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
+  CUSTOMERS: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
   ROLES: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
   PRODUCTS: ["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const,
   ORDERS: ["VIEW", "CREATE", "EDIT", "MANAGE"] as const,
@@ -15,6 +16,7 @@ export const PERMISSIONS = {
 export const RESOURCE_WILDCARD_FEATURES: Feature[] = [
   "PRODUCTS",
   "USERS",
+  "CUSTOMERS",
   "ROLES",
   "ORDERS",
 ];

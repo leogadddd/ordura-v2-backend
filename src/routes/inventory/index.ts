@@ -1,9 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { listStocks } from "./list";
-import { getStock } from "./get";
-import { adjustStock } from "./adjust";
 import { getInventorySummary } from "./summary";
-import { createStock, deleteStock } from "./stocks";
 import {
   adjustInventoryLevel,
   createInventoryItem,
@@ -23,12 +19,12 @@ import { requireAuthCookie } from "../../lib/authentication";
 import { requirePermissions } from "../../lib/authorization";
 
 export async function inventoryRoutes(server: FastifyInstance) {
-  // inventory items (standalone stock items)
+  // ingredient items
   server.get(
     "/items",
     {
       onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("INVENTORY:VIEW"),
+      preHandler: requirePermissions(["INVENTORY:VIEW", "PRODUCTS:VIEW"]),
     },
     listInventoryItems,
   );
@@ -85,52 +81,6 @@ export async function inventoryRoutes(server: FastifyInstance) {
       preHandler: requirePermissions("INVENTORY:ADJUST"),
     },
     adjustInventoryLevel,
-  );
-
-  // stocks
-  server.get(
-    "/stocks",
-    {
-      onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("INVENTORY:VIEW"),
-    },
-    listStocks,
-  );
-
-  server.get(
-    "/stocks/:id",
-    {
-      onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("INVENTORY:VIEW"),
-    },
-    getStock,
-  );
-
-  server.post(
-    "/stocks",
-    {
-      onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("INVENTORY:MANAGE"),
-    },
-    createStock,
-  );
-
-  server.delete(
-    "/stocks/:id",
-    {
-      onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("INVENTORY:MANAGE"),
-    },
-    deleteStock,
-  );
-
-  server.post(
-    "/adjust",
-    {
-      onRequest: requireAuthCookie(server),
-      preHandler: requirePermissions("INVENTORY:ADJUST"),
-    },
-    adjustStock,
   );
 
   server.get(

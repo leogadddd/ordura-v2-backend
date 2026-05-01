@@ -1,6 +1,7 @@
 import { RouteHandlerMethod } from "fastify";
 import { prisma } from "../../lib/prisma";
 import { sendSuccess, sendNotFound, sendError } from "../../lib/response";
+import { productIngredientInclude } from "./ingredients";
 
 interface GetProductParams {
   id: string;
@@ -12,6 +13,7 @@ export const getProduct: RouteHandlerMethod = async (request, reply) => {
 
     const product = await prisma.product.findUnique({
       where: { id },
+      include: productIngredientInclude(),
     });
 
     if (!product) {
